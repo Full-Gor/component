@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PinePhone Mainboard 3D - Wireframe Cyan</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000508;
+            color: #00ffff;
+            font-family: 'Share Tech Mono', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        /* Scanlines effect */
+        #canvas-container::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1) 0px,
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        #info-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 20, 30, 0.9);
+            border: 1px solid #00ffff;
+            border-radius: 0;
+            padding: 20px;
+            min-width: 320px;
+            max-width: 400px;
+            z-index: 100;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.3),
+                inset 0 0 20px rgba(0, 255, 255, 0.05);
+        }
+        
+        #info-panel::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            bottom: -1px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            pointer-events: none;
+        }
+        
+        #info-panel h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: #00ffff;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        
+        #info-panel .version {
+            font-size: 0.7rem;
+            color: #008888;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+        
+        #info-panel .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        #info-panel .stat {
+            background: rgba(0, 255, 255, 0.05);
+            padding: 10px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        
+        #info-panel .stat-label {
+            font-size: 0.6rem;
+            color: #008888;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        #info-panel .stat-value {
+            font-size: 1.2rem;
+            color: #00ffff;
+            font-weight: 700;
+            text-shadow: 0 0 5px #00ffff;
+        }
+        
+        #component-info {
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid #00ffff;
+            padding: 12px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        #component-info.visible {
+            display: block;
+            animation: glitch 0.3s ease;
+        }
+        
+        @keyframes glitch {
+            0% { transform: translateX(-2px); opacity: 0.8; }
+            25% { transform: translateX(2px); opacity: 1; }
+            50% { transform: translateX(-1px); opacity: 0.9; }
+            75% { transform: translateX(1px); opacity: 1; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        
+        #component-info h3 {
+            color: #00ffff;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 2px;
+        }
+        
+        #component-info p {
+            font-size: 0.75rem;
+            color: #00aaaa;
+            line-height: 1.5;
+        }
+        
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 20, 30, 0.9);
+            border: 1px solid #00ffff;
+            padding: 15px;
+            z-index: 100;
+        }
+        
+        #controls h4 {
+            font-size: 0.65rem;
+            color: #00ffff;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        #controls ul {
+            list-style: none;
+            font-size: 0.7rem;
+            color: #008888;
+        }
+        
+        #controls li {
+            margin-bottom: 5px;
+        }
+        
+        #controls kbd {
+            background: transparent;
+            padding: 2px 6px;
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            font-family: inherit;
+            text-shadow: 0 0 5px #00ffff;
+        }
+        
+        #legend {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 20, 30, 0.9);
+            border: 1px solid #00ffff;
+            padding: 15px;
+            z-index: 100;
+            min-width: 180px;
+        }
+        
+        #legend h4 {
+            font-size: 0.65rem;
+            color: #00ffff;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.7rem;
+            color: #00aaaa;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 2px;
+            margin-right: 10px;
+            box-shadow: 0 0 5px currentColor;
+        }
+        
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000508;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        
+        #loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        #loading h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: #00ffff;
+            font-size: 1.8rem;
+            margin-bottom: 30px;
+            letter-spacing: 8px;
+            text-shadow: 0 0 20px #00ffff;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .loader {
+            width: 250px;
+            height: 2px;
+            background: rgba(0, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .loader-bar {
+            width: 0%;
+            height: 100%;
+            background: #00ffff;
+            box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+            transition: width 0.3s ease;
+        }
+        
+        #loading-text {
+            margin-top: 20px;
+            font-size: 0.7rem;
+            color: #008888;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        
+        /* Corner decorations */
+        .corner {
+            position: fixed;
+            width: 30px;
+            height: 30px;
+            border-color: #00ffff;
+            border-style: solid;
+            z-index: 50;
+        }
+        
+        .corner-tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+        .corner-tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+        .corner-bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
+        .corner-br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+        
+        /* Buttons */
+        .buttons-container {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        
+        .btn-mode {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            padding: 10px 22px;
+            background: rgba(0, 20, 40, 0.9);
+            border: 2px solid #00ffff;
+            border-radius: 0;
+            color: #00ffff;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .btn-mode:hover {
+            background: rgba(0, 100, 150, 0.4);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
+        }
+        
+        .btn-mode.active {
+            background: rgba(0, 150, 200, 0.5);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
+            color: #fff;
+        }
+        
+        .btn-mode.solid-btn {
+            border-color: #00ff88;
+            color: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+        
+        .btn-mode.solid-btn:hover {
+            background: rgba(0, 100, 80, 0.4);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.6);
+        }
+        
+        /* Deploy indicator */
+        .deploy-indicator {
+            position: fixed;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 200px;
+            background: rgba(0, 255, 255, 0.2);
+            z-index: 100;
+        }
+        
+        .deploy-indicator .fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 0%;
+            background: linear-gradient(to top, #00ffff, #ff00ff);
+            transition: height 0.1s ease-out;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+        }
+        
+        .deploy-indicator .label {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(0, 255, 255, 0.5);
+            font-size: 9px;
+            letter-spacing: 1px;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+        
+        .scroll-info {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(0, 255, 255, 0.5);
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+    
+    <div id="loading">
+        <h2>WIREFRAME MODE</h2>
+        <div class="loader">
+            <div class="loader-bar" id="loader-bar"></div>
+        </div>
+        <p id="loading-text">Initializing vectors...</p>
+    </div>
+    
+    <div id="canvas-container"></div>
+    
+    <div id="info-panel">
+        <h1>PinePhone PCB</h1>
+        <p class="version">// WIREFRAME ANALYSIS v1.1</p>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Vertices</div>
+                <div class="stat-value" id="vertex-count">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Edges</div>
+                <div class="stat-value" id="edge-count">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Components</div>
+                <div class="stat-value" id="component-count">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Layers</div>
+                <div class="stat-value">4</div>
+            </div>
+        </div>
+        <div id="component-info">
+            <h3 id="component-name">—</h3>
+            <p id="component-desc">—</p>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <h4>Controls</h4>
+        <ul>
+            <li><kbd>DRAG</kbd> Rotate</li>
+            <li><kbd>SCROLL</kbd> Zoom</li>
+            <li><kbd>R</kbd> Reset</li>
+            <li><kbd>T</kbd> Top view</li>
+            <li><kbd>G</kbd> Toggle grid</li>
+            <li><kbd>A</kbd> Auto-rotate</li>
+        </ul>
+    </div>
+    
+    <div id="legend">
+        <h4>Signal Types</h4>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00ffff; color: #00ffff;"></div>
+            <span>PCB Structure</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00ff88; color: #00ff88;"></div>
+            <span>Connectors</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff00ff; color: #ff00ff;"></div>
+            <span>SoC / ICs</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ffff00; color: #ffff00;"></div>
+            <span>Antennas</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff8800; color: #ff8800;"></div>
+            <span>Passives</span>
+        </div>
+    </div>
+    
+    <div class="deploy-indicator">
+        <div class="fill" id="deployFill"></div>
+        <div class="label">EXPLODE</div>
+    </div>
+    
+    <div class="scroll-info">SCROLL = EXPLOSER • CLIC = INFO COMPOSANT</div>
+    
+    <div class="buttons-container">
+        <button class="btn-mode solid-btn" id="btnSolid">SOLID</button>
+        <button class="btn-mode active" id="btnWireframe">WIREFRAME</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ============================================
+        // PINEPHONE MAINBOARD 3D - WIREFRAME CYAN
+        // Cyberpunk aesthetic visualization
+        // ============================================
+
+        const BOARD_WIDTH = 65;
+        const BOARD_HEIGHT = 130;
+        const BOARD_THICKNESS = 1.6;
+
+        const COLORS = {
+            pcb: 0x00ffff,
+            connector: 0x00ff88,
+            ic: 0xff00ff,
+            antenna: 0xffff00,
+            passive: 0xff8800,
+            grid: 0x004444,
+            trace: 0x008888
+        };
+
+        const COMPONENTS = {
+            connectors: [
+                // === TOP SIDE ===
+                { id: 'J1000', x: 22, y: 85, w: 28, h: 4, type: 'fpc', pins: 40, desc: 'LCD FPC Connector - 40 pins', face: 'top', zOffset: 0 },
+                { id: 'J1001', x: 35, y: 80, w: 15, h: 3, type: 'fpc', pins: 24, desc: 'Digitizer FPC Interface', face: 'top', zOffset: 0.5 },
+                { id: 'J1100', x: 58, y: 8, w: 18, h: 3, type: 'fpc', pins: 20, desc: 'Daughter Board Link', face: 'top', zOffset: 1 },
+                { id: 'J1101', x: 42, y: 72, w: 6, h: 4, type: 'btb', pins: 12, desc: 'Board-to-Board Connector', face: 'top', zOffset: 1.5 },
+                { id: 'J1200', x: 3, y: 45, w: 3, h: 8, type: 'vertical', pins: 10, desc: 'Left Side Port', face: 'top', zOffset: 2 },
+                { id: 'J1201', x: 94, y: 30, w: 3, h: 5, type: 'vertical', pins: 6, desc: 'Right Side Port', face: 'top', zOffset: 2.5 },
+                { id: 'J1300', x: 30, y: 5, w: 22, h: 4, type: 'fpc', pins: 34, desc: 'Keyboard/Touch Interface', face: 'top', zOffset: 3 },
+                { id: 'J600', x: 12, y: 5, w: 8, h: 6, type: 'usb', pins: 24, desc: 'USB Type-C Port', face: 'top', zOffset: 3.5 },
+                { id: 'J801', x: 65, y: 72, w: 12, h: 10, type: 'camera', pins: 24, desc: 'Rear Camera Module', face: 'top', zOffset: 4 },
+                { id: 'J901', x: 80, y: 18, w: 12, h: 14, type: 'sim', pins: 8, desc: 'SIM / MicroSD Slot', face: 'top', zOffset: 4.5 },
+                { id: 'J501', x: 5, y: 22, w: 4, h: 5, type: 'audio', pins: 5, desc: '3.5mm Audio Jack', face: 'top', zOffset: 5 },
+                // === BOTTOM SIDE ===
+                { id: 'J800', x: 50, y: 92, w: 20, h: 4, type: 'fpc', pins: 30, desc: 'Battery/Power FPC Connector', face: 'bottom', zOffset: 0 },
+                { id: 'X500', x: 35, y: 58, w: 6, h: 4, type: 'crystal', pins: 4, desc: 'Crystal Oscillator 32.768kHz', face: 'bottom', zOffset: 0.5 },
+                { id: 'X501', x: 48, y: 72, w: 4, h: 2, type: 'crystal', pins: 2, desc: 'Secondary Crystal', face: 'bottom', zOffset: 0.6 },
+                { id: 'X1300', x: 22, y: 18, w: 4, h: 2, type: 'crystal', pins: 2, desc: 'RTC Oscillator', face: 'bottom', zOffset: 0.7 },
+                { id: 'X1400', x: 88, y: 72, w: 3, h: 2, type: 'crystal', pins: 2, desc: 'WiFi/BT Oscillator', face: 'bottom', zOffset: 0.8 },
+                { id: 'FB802', x: 52, y: 12, w: 2, h: 1, type: 'ferrite', pins: 2, desc: 'EMI Filter Ferrite Bead', face: 'bottom', zOffset: 0.9 },
+                { id: 'FB803', x: 52, y: 14, w: 2, h: 1, type: 'ferrite', pins: 2, desc: 'EMI Filter Ferrite Bead', face: 'bottom', zOffset: 1 }
+            ],
+            ics: [
+                // === TOP SIDE ===
+                { id: 'U1500', x: 30, y: 38, w: 24, h: 28, type: 'bga', desc: 'Allwinner A64 - Quad ARM Cortex-A53 @ 1.2GHz', face: 'top', zOffset: 6 },
+                { id: 'U101', x: 75, y: 85, w: 4, h: 3, type: 'qfn', desc: 'AXP803 Power Management IC', face: 'top', zOffset: 6.5 },
+                // === BOTTOM SIDE ===
+                { id: 'U1', x: 42, y: 52, w: 18, h: 22, type: 'bga', desc: 'Main Controller / Baseband Processor', face: 'bottom', zOffset: 6 },
+                { id: 'DU1', x: 42, y: 38, w: 14, h: 14, type: 'bga', desc: 'LPDDR3 FBGA178 - 2GB/3GB RAM', face: 'bottom', zOffset: 6.5 },
+                { id: 'U700', x: 8, y: 48, w: 10, h: 18, type: 'bga', desc: 'Quectel EG25-G LTE Modem', face: 'bottom', zOffset: 7 },
+                { id: 'U600', x: 82, y: 35, w: 10, h: 16, type: 'qfn', desc: 'Audio Codec Controller', face: 'bottom', zOffset: 7.5 },
+                { id: 'U1000', x: 68, y: 68, w: 8, h: 6, type: 'qfn', desc: 'Touch Controller IC', face: 'bottom', zOffset: 8 },
+                { id: 'U1200', x: 8, y: 82, w: 8, h: 5, type: 'qfn', desc: '1.8V Voltage Regulator', face: 'bottom', zOffset: 8.2 },
+                { id: 'U1201', x: 12, y: 92, w: 4, h: 3, type: 'qfn', desc: '3.3V Voltage Regulator', face: 'bottom', zOffset: 8.4 },
+                { id: 'U1202', x: 8, y: 72, w: 6, h: 5, type: 'qfn', desc: 'DC-DC Converter', face: 'bottom', zOffset: 8.6 },
+                { id: 'U1301', x: 8, y: 32, w: 5, h: 6, type: 'qfn', desc: 'LED / Backlight Driver', face: 'bottom', zOffset: 8.8 },
+                { id: 'U1304', x: 18, y: 22, w: 6, h: 5, type: 'qfn', desc: 'Battery Charge Controller', face: 'bottom', zOffset: 9 },
+                { id: 'U1305', x: 28, y: 12, w: 4, h: 3, type: 'qfn', desc: 'Overvoltage Protection', face: 'bottom', zOffset: 9.1 },
+                { id: 'U1308', x: 28, y: 8, w: 3, h: 2, type: 'qfn', desc: 'Temperature Sensor', face: 'bottom', zOffset: 9.2 },
+                { id: 'U1400', x: 88, y: 62, w: 8, h: 8, type: 'qfn', desc: 'RTL8723CS WiFi/Bluetooth Module', face: 'bottom', zOffset: 9.3 },
+                { id: 'U1502', x: 72, y: 45, w: 4, h: 3, type: 'qfn', desc: 'RF Amplifier', face: 'bottom', zOffset: 9.4 },
+                { id: 'U1503', x: 72, y: 52, w: 4, h: 3, type: 'qfn', desc: 'Antenna Switch', face: 'bottom', zOffset: 9.5 },
+                { id: 'U1504', x: 62, y: 18, w: 4, h: 3, type: 'qfn', desc: 'Audio Amplifier', face: 'bottom', zOffset: 9.6 },
+                { id: 'U1505', x: 78, y: 18, w: 3, h: 2, type: 'qfn', desc: 'Voltage Reference', face: 'bottom', zOffset: 9.7 },
+                { id: 'D1100', x: 38, y: 18, w: 2, h: 2, type: 'diode', desc: 'ESD Protection Diode', face: 'bottom', zOffset: 9.8 },
+                { id: 'D1200', x: 62, y: 12, w: 2, h: 2, type: 'diode', desc: 'Schottky Diode', face: 'bottom', zOffset: 9.9 }
+            ],
+            antennas: [
+                { id: 'ANT1801', x: 5, y: 88, w: 8, h: 3, desc: 'Primary Cellular Antenna - LTE/4G', face: 'top', zOffset: 7 },
+                { id: 'ANT1803', x: 5, y: 82, w: 7, h: 3, desc: 'Secondary Cellular - MIMO', face: 'top', zOffset: 7.5 },
+                { id: 'ANT1400', x: 5, y: 76, w: 6, h: 3, desc: 'WiFi 802.11 b/g/n + BT 4.0', face: 'top', zOffset: 8 },
+                { id: 'ANT1500', x: 92, y: 88, w: 5, h: 3, desc: 'GPS/GLONASS Antenna', face: 'top', zOffset: 8.5 },
+                { id: 'ANT1502', x: 92, y: 82, w: 5, h: 3, desc: 'Diversity Antenna', face: 'top', zOffset: 9 }
+            ],
+            switches: [
+                { id: 'SW1', x: 82, y: 35, w: 6, h: 3, desc: 'Hardware Kill Switch - Modem/WiFi/Mic/Camera', face: 'top', zOffset: 9.5 }
+            ],
+            passives: [
+                // === TOP SIDE ===
+                { id: 'R1001', x: 42, y: 78, w: 1.5, h: 0.8, type: 'resistor', face: 'top', zOffset: 10 },
+                { id: 'R1002', x: 44, y: 78, w: 1.5, h: 0.8, type: 'resistor', face: 'top', zOffset: 10.2 },
+                { id: 'C310', x: 6, y: 65, w: 1, h: 1, type: 'capacitor', face: 'top', zOffset: 10.4 },
+                { id: 'C311', x: 6, y: 62, w: 1, h: 1, type: 'capacitor', face: 'top', zOffset: 10.6 },
+                { id: 'C900', x: 88, y: 15, w: 1, h: 1, type: 'capacitor', face: 'top', zOffset: 10.8 },
+                { id: 'C901', x: 88, y: 13, w: 1, h: 1, type: 'capacitor', face: 'top', zOffset: 11 },
+                { id: 'L1900', x: 55, y: 70, w: 2, h: 2, type: 'inductor', face: 'top', zOffset: 11.2 },
+                // === BOTTOM SIDE - Capacitors ===
+                { id: 'C411', x: 32, y: 48, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 10 },
+                { id: 'C504', x: 28, y: 52, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 10.1 },
+                { id: 'C505', x: 28, y: 50, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 10.2 },
+                { id: 'C522', x: 30, y: 55, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 10.4 },
+                { id: 'C545', x: 30, y: 45, w: 1.5, h: 1.5, type: 'capacitor', face: 'bottom', zOffset: 10.6 },
+                { id: 'C600', x: 72, y: 38, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 10.9 },
+                { id: 'C602', x: 78, y: 22, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 11.1 },
+                { id: 'C610', x: 72, y: 25, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 11.5 },
+                { id: 'C618', x: 88, y: 38, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 11.8 },
+                { id: 'C630', x: 62, y: 42, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 12.3 },
+                { id: 'C644', x: 18, y: 38, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 12.8 },
+                { id: 'C645', x: 15, y: 42, w: 1.5, h: 1.5, type: 'capacitor', face: 'bottom', zOffset: 12.9 },
+                { id: 'C810', x: 12, y: 68, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 13.4 },
+                { id: 'C816', x: 52, y: 15, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 13.7 },
+                { id: 'C1108', x: 28, y: 22, w: 1.5, h: 1.5, type: 'capacitor', face: 'bottom', zOffset: 14.4 },
+                { id: 'C1402', x: 82, y: 58, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 14.6 },
+                { id: 'C1505', x: 78, y: 15, w: 1, h: 1, type: 'capacitor', face: 'bottom', zOffset: 14.9 },
+                // === BOTTOM SIDE - Resistors ===
+                { id: 'R600', x: 78, y: 18, w: 1.2, h: 0.6, type: 'resistor', face: 'bottom', zOffset: 15.1 },
+                { id: 'R601', x: 75, y: 22, w: 1.2, h: 0.6, type: 'resistor', face: 'bottom', zOffset: 15.2 },
+                { id: 'R614', x: 15, y: 65, w: 1.2, h: 0.6, type: 'resistor', face: 'bottom', zOffset: 15.5 },
+                { id: 'R901', x: 28, y: 28, w: 1.2, h: 0.6, type: 'resistor', face: 'bottom', zOffset: 15.7 },
+                { id: 'R1004', x: 68, y: 72, w: 1.2, h: 0.6, type: 'resistor', face: 'bottom', zOffset: 15.8 },
+                { id: 'R1304', x: 15, y: 28, w: 1.2, h: 0.6, type: 'resistor', face: 'bottom', zOffset: 15.9 },
+                // === BOTTOM SIDE - Inductors ===
+                { id: 'L600', x: 72, y: 42, w: 2, h: 2, type: 'inductor', face: 'bottom', zOffset: 16.2 },
+                { id: 'L601', x: 68, y: 32, w: 1.5, h: 1.5, type: 'inductor', face: 'bottom', zOffset: 16.3 },
+                { id: 'L602', x: 62, y: 38, w: 1.5, h: 1.5, type: 'inductor', face: 'bottom', zOffset: 16.4 },
+                { id: 'L1100', x: 42, y: 15, w: 2, h: 2, type: 'inductor', face: 'bottom', zOffset: 16.9 },
+                { id: 'L1300', x: 5, y: 12, w: 2, h: 2, type: 'inductor', face: 'bottom', zOffset: 17 }
+            ],
+            shields: [
+                { id: 'S2', x: 8, y: 35, w: 4, h: 25, desc: 'RF Shielding Can', face: 'top', zOffset: 11.5 }
+            ],
+            holes: [
+                { x: 50, y: 55, r: 2 },
+                { x: 60, y: 55, r: 2 },
+                { x: 70, y: 55, r: 2 }
+            ]
+        };
+
+        // State for deploy
+        let deployProgress = 0;
+
+        let scene, camera, renderer;
+        let componentMeshes = [];
+        let gridHelper;
+        let autoRotate = false;
+        let stats = { vertices: 0, edges: 0, components: 0 };
+
+        function init() {
+            updateLoading(10, 'Initializing renderer...');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000508);
+            
+            // Add fog for depth
+            scene.fog = new THREE.Fog(0x000508, 100, 400);
+            
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 80, 120);
+            camera.lookAt(0, 0, 0);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            updateLoading(30, 'Building PCB wireframe...');
+            createWireframePCB();
+            
+            updateLoading(50, 'Rendering components...');
+            createWireframeComponents();
+            
+            updateLoading(70, 'Generating grid matrix...');
+            createGrid();
+            createTraces();
+            
+            updateLoading(90, 'Finalizing...');
+            setupControls();
+            
+            updateLoading(100, 'System ready');
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('hidden');
+            }, 500);
+            
+            document.getElementById('vertex-count').textContent = stats.vertices.toLocaleString();
+            document.getElementById('edge-count').textContent = stats.edges.toLocaleString();
+            document.getElementById('component-count').textContent = stats.components;
+            
+            animate();
+        }
+
+        function updateLoading(percent, text) {
+            document.getElementById('loader-bar').style.width = percent + '%';
+            document.getElementById('loading-text').textContent = text;
+        }
+
+        function createWireframePCB() {
+            // PCB outline
+            const pcbGeometry = new THREE.BoxGeometry(BOARD_WIDTH, BOARD_THICKNESS, BOARD_HEIGHT);
+            const pcbEdges = new THREE.EdgesGeometry(pcbGeometry);
+            const pcbLine = new THREE.LineSegments(
+                pcbEdges,
+                new THREE.LineBasicMaterial({ color: COLORS.pcb, linewidth: 2 })
+            );
+            scene.add(pcbLine);
+            
+            stats.vertices += pcbGeometry.attributes.position.count;
+            stats.edges += pcbEdges.attributes.position.count / 2;
+            
+            // PCB face grid
+            const divisions = 20;
+            for (let i = 0; i <= divisions; i++) {
+                const t = i / divisions;
+                const x = -BOARD_WIDTH / 2 + t * BOARD_WIDTH;
+                const z = -BOARD_HEIGHT / 2 + t * BOARD_HEIGHT;
+                
+                // Vertical lines on top
+                const vGeo = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(x, BOARD_THICKNESS / 2, -BOARD_HEIGHT / 2),
+                    new THREE.Vector3(x, BOARD_THICKNESS / 2, BOARD_HEIGHT / 2)
+                ]);
+                scene.add(new THREE.Line(vGeo, new THREE.LineBasicMaterial({ 
+                    color: COLORS.pcb, 
+                    transparent: true, 
+                    opacity: 0.15 
+                })));
+                
+                // Horizontal lines on top
+                const hGeo = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(-BOARD_WIDTH / 2, BOARD_THICKNESS / 2, z),
+                    new THREE.Vector3(BOARD_WIDTH / 2, BOARD_THICKNESS / 2, z)
+                ]);
+                scene.add(new THREE.Line(hGeo, new THREE.LineBasicMaterial({ 
+                    color: COLORS.pcb, 
+                    transparent: true, 
+                    opacity: 0.15 
+                })));
+            }
+            
+            // Corner markers
+            const cornerSize = 5;
+            const corners = [
+                { x: -BOARD_WIDTH / 2, z: -BOARD_HEIGHT / 2 },
+                { x: BOARD_WIDTH / 2, z: -BOARD_HEIGHT / 2 },
+                { x: -BOARD_WIDTH / 2, z: BOARD_HEIGHT / 2 },
+                { x: BOARD_WIDTH / 2, z: BOARD_HEIGHT / 2 }
+            ];
+            
+            corners.forEach(c => {
+                const dx = c.x > 0 ? -1 : 1;
+                const dz = c.z > 0 ? -1 : 1;
+                
+                const geo1 = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(c.x, BOARD_THICKNESS / 2 + 0.1, c.z),
+                    new THREE.Vector3(c.x + dx * cornerSize, BOARD_THICKNESS / 2 + 0.1, c.z)
+                ]);
+                const geo2 = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(c.x, BOARD_THICKNESS / 2 + 0.1, c.z),
+                    new THREE.Vector3(c.x, BOARD_THICKNESS / 2 + 0.1, c.z + dz * cornerSize)
+                ]);
+                
+                scene.add(new THREE.Line(geo1, new THREE.LineBasicMaterial({ color: COLORS.pcb })));
+                scene.add(new THREE.Line(geo2, new THREE.LineBasicMaterial({ color: COLORS.pcb })));
+            });
+        }
+
+        function percentToCoord(xPercent, yPercent) {
+            const x = (xPercent / 100 - 0.5) * BOARD_WIDTH;
+            const z = (0.5 - yPercent / 100) * BOARD_HEIGHT;
+            return { x, z };
+        }
+
+        function createWireframeBox(width, height, depth, color, position, userData) {
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const edges = new THREE.EdgesGeometry(geometry);
+            const material = new THREE.LineBasicMaterial({ color: color });
+            const wireframe = new THREE.LineSegments(edges, material);
+            wireframe.position.copy(position);
+            wireframe.userData = userData;
+            
+            stats.vertices += geometry.attributes.position.count;
+            stats.edges += edges.attributes.position.count / 2;
+            stats.components++;
+            
+            scene.add(wireframe);
+            componentMeshes.push(wireframe);
+            
+            // Add glow effect
+            const glowMaterial = new THREE.LineBasicMaterial({ 
+                color: color, 
+                transparent: true, 
+                opacity: 0.3 
+            });
+            const glow = new THREE.LineSegments(edges.clone(), glowMaterial);
+            glow.position.copy(position);
+            glow.scale.multiplyScalar(1.02);
+            scene.add(glow);
+            
+            return wireframe;
+        }
+
+        function createWireframeComponents() {
+            // Connectors
+            COMPONENTS.connectors.forEach(conn => {
+                const pos = percentToCoord(conn.x, conn.y);
+                const width = (conn.w / 100) * BOARD_WIDTH;
+                const depth = (conn.h / 100) * BOARD_HEIGHT;
+                const height = conn.type === 'usb' ? 3 : (conn.type === 'crystal' || conn.type === 'ferrite' ? 0.5 : 1.5);
+                const isBottom = conn.face === 'bottom';
+                const yMultiplier = isBottom ? -1 : 1;
+                const yPos = yMultiplier * (height / 2 + BOARD_THICKNESS / 2);
+                
+                createWireframeBox(
+                    width, height, depth,
+                    conn.type === 'crystal' ? 0x88ffff : COLORS.connector,
+                    new THREE.Vector3(pos.x, yPos, pos.z),
+                    { id: conn.id, type: 'connector', desc: conn.desc, face: conn.face || 'top', zOffset: conn.zOffset || 0 }
+                );
+                
+                // Pin array visualization (only for top side)
+                if (conn.pins && !isBottom) {
+                    const pinSpacing = width / conn.pins;
+                    for (let i = 0; i < conn.pins; i++) {
+                        const pinX = pos.x - width / 2 + (i + 0.5) * pinSpacing;
+                        const pinGeo = new THREE.BufferGeometry().setFromPoints([
+                            new THREE.Vector3(pinX, BOARD_THICKNESS / 2, pos.z - depth / 2),
+                            new THREE.Vector3(pinX, BOARD_THICKNESS / 2, pos.z + depth / 2)
+                        ]);
+                        scene.add(new THREE.Line(pinGeo, new THREE.LineBasicMaterial({ 
+                            color: COLORS.connector, 
+                            transparent: true, 
+                            opacity: 0.5 
+                        })));
+                    }
+                }
+            });
+            
+            // ICs
+            COMPONENTS.ics.forEach(ic => {
+                const pos = percentToCoord(ic.x, ic.y);
+                const width = (ic.w / 100) * BOARD_WIDTH;
+                const depth = (ic.h / 100) * BOARD_HEIGHT;
+                const isBottom = ic.face === 'bottom';
+                const yMultiplier = isBottom ? -1 : 1;
+                
+                // Variable height
+                let height = 0.8;
+                if (ic.id === 'U1500' || ic.id === 'U1') height = 1.5;
+                else if (ic.id === 'DU1') height = 1.2;
+                else if (ic.id === 'U700') height = 1.8;
+                else if (ic.type === 'diode') height = 0.4;
+                
+                const yPos = yMultiplier * (height / 2 + BOARD_THICKNESS / 2);
+                
+                // Different color for RAM
+                let icColor = COLORS.ic;
+                if (ic.id === 'DU1') icColor = 0xff88ff;
+                if (ic.id === 'U700') icColor = 0xcc00cc;
+                
+                const icMesh = createWireframeBox(
+                    width, height, depth,
+                    icColor,
+                    new THREE.Vector3(pos.x, yPos, pos.z),
+                    { id: ic.id, type: 'ic', desc: ic.desc, face: ic.face || 'top', zOffset: ic.zOffset || 0 }
+                );
+                
+                // BGA ball grid visualization
+                if (ic.type === 'bga') {
+                    const ballSpacing = 1.5;
+                    const ballsX = Math.floor(width / ballSpacing) - 2;
+                    const ballsZ = Math.floor(depth / ballSpacing) - 2;
+                    
+                    for (let i = 0; i < ballsX; i++) {
+                        for (let j = 0; j < ballsZ; j++) {
+                            if ((i + j) % 3 === 0) {
+                                const bx = pos.x + (i - ballsX / 2) * ballSpacing;
+                                const bz = pos.z + (j - ballsZ / 2) * ballSpacing;
+                                
+                                const dotGeo = new THREE.CircleGeometry(0.3, 8);
+                                const dotEdges = new THREE.EdgesGeometry(dotGeo);
+                                const dot = new THREE.LineSegments(dotEdges, new THREE.LineBasicMaterial({ 
+                                    color: icColor, 
+                                    transparent: true, 
+                                    opacity: 0.4 
+                                }));
+                                dot.rotation.x = isBottom ? Math.PI / 2 : -Math.PI / 2;
+                                dot.position.set(bx, yMultiplier * (BOARD_THICKNESS / 2 + 0.05), bz);
+                                scene.add(dot);
+                            }
+                        }
+                    }
+                    
+                    // Cross pattern on SoC
+                    const crossY = yMultiplier * (height + BOARD_THICKNESS / 2 + 0.1);
+                    const crossGeo1 = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(pos.x - width / 3, crossY, pos.z),
+                        new THREE.Vector3(pos.x + width / 3, crossY, pos.z)
+                    ]);
+                    const crossGeo2 = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(pos.x, crossY, pos.z - depth / 3),
+                        new THREE.Vector3(pos.x, crossY, pos.z + depth / 3)
+                    ]);
+                    scene.add(new THREE.Line(crossGeo1, new THREE.LineBasicMaterial({ color: icColor })));
+                    scene.add(new THREE.Line(crossGeo2, new THREE.LineBasicMaterial({ color: icColor })));
+                }
+            });
+            
+            // Antennas
+            COMPONENTS.antennas.forEach(ant => {
+                const pos = percentToCoord(ant.x, ant.y);
+                const width = (ant.w / 100) * BOARD_WIDTH;
+                const depth = (ant.h / 100) * BOARD_HEIGHT;
+                
+                createWireframeBox(
+                    width, 0.5, depth,
+                    COLORS.antenna,
+                    new THREE.Vector3(pos.x, 0.25 + BOARD_THICKNESS / 2, pos.z),
+                    { id: ant.id, type: 'antenna', desc: ant.desc, face: ant.face || 'top', zOffset: ant.zOffset || 0 }
+                );
+                
+                // Antenna wave symbol
+                for (let i = 1; i <= 3; i++) {
+                    const arcGeo = new THREE.BufferGeometry();
+                    const points = [];
+                    for (let a = -Math.PI / 4; a <= Math.PI / 4; a += 0.1) {
+                        points.push(new THREE.Vector3(
+                            pos.x + Math.cos(a) * i * 1.5,
+                            1 + BOARD_THICKNESS / 2,
+                            pos.z + Math.sin(a) * i * 1.5
+                        ));
+                    }
+                    arcGeo.setFromPoints(points);
+                    scene.add(new THREE.Line(arcGeo, new THREE.LineBasicMaterial({ 
+                        color: COLORS.antenna, 
+                        transparent: true, 
+                        opacity: 0.5 / i 
+                    })));
+                }
+            });
+            
+            // Switches
+            COMPONENTS.switches.forEach(sw => {
+                const pos = percentToCoord(sw.x, sw.y);
+                const width = (sw.w / 100) * BOARD_WIDTH;
+                const depth = (sw.h / 100) * BOARD_HEIGHT;
+                
+                createWireframeBox(
+                    width, 1.2, depth,
+                    COLORS.connector,
+                    new THREE.Vector3(pos.x, 0.6 + BOARD_THICKNESS / 2, pos.z),
+                    { id: sw.id, type: 'switch', desc: sw.desc, face: sw.face || 'top', zOffset: sw.zOffset || 0 }
+                );
+            });
+            
+            // Passives
+            COMPONENTS.passives.forEach(p => {
+                const pos = percentToCoord(p.x, p.y);
+                const width = (p.w / 100) * BOARD_WIDTH;
+                const depth = (p.h / 100) * BOARD_HEIGHT;
+                const isBottom = p.face === 'bottom';
+                const yMultiplier = isBottom ? -1 : 1;
+                const height = p.type === 'inductor' ? 0.5 : 0.3;
+                const yPos = yMultiplier * (height / 2 + BOARD_THICKNESS / 2);
+                
+                createWireframeBox(
+                    width, height, depth,
+                    COLORS.passive,
+                    new THREE.Vector3(pos.x, yPos, pos.z),
+                    { id: p.id, type: 'passive', desc: `${p.type} component`, face: p.face || 'top', zOffset: p.zOffset || 0 }
+                );
+            });
+            
+            // Shields
+            COMPONENTS.shields.forEach(sh => {
+                const pos = percentToCoord(sh.x, sh.y);
+                const width = (sh.w / 100) * BOARD_WIDTH;
+                const depth = (sh.h / 100) * BOARD_HEIGHT;
+                
+                // Just the frame, no top
+                const height = 2;
+                const walls = [
+                    { x: 0, z: depth / 2, w: width, d: 0.1 },
+                    { x: 0, z: -depth / 2, w: width, d: 0.1 },
+                    { x: width / 2, z: 0, w: 0.1, d: depth },
+                    { x: -width / 2, z: 0, w: 0.1, d: depth }
+                ];
+                
+                walls.forEach(w => {
+                    const geo = new THREE.BoxGeometry(w.w, height, w.d);
+                    const edges = new THREE.EdgesGeometry(geo);
+                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: COLORS.pcb }));
+                    line.position.set(pos.x + w.x, height / 2 + BOARD_THICKNESS / 2, pos.z + w.z);
+                    scene.add(line);
+                });
+            });
+            
+            // Mounting holes
+            COMPONENTS.holes.forEach(h => {
+                const pos = percentToCoord(h.x, h.y);
+                const radius = (h.r / 100) * BOARD_WIDTH;
+                
+                const ringGeo = new THREE.RingGeometry(radius * 0.5, radius, 32);
+                const ringEdges = new THREE.EdgesGeometry(ringGeo);
+                const ring = new THREE.LineSegments(ringEdges, new THREE.LineBasicMaterial({ color: COLORS.pcb }));
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.set(pos.x, BOARD_THICKNESS / 2 + 0.05, pos.z);
+                scene.add(ring);
+                
+                // Cross in hole
+                const cross1 = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(pos.x - radius, BOARD_THICKNESS / 2 + 0.05, pos.z),
+                    new THREE.Vector3(pos.x + radius, BOARD_THICKNESS / 2 + 0.05, pos.z)
+                ]);
+                const cross2 = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(pos.x, BOARD_THICKNESS / 2 + 0.05, pos.z - radius),
+                    new THREE.Vector3(pos.x, BOARD_THICKNESS / 2 + 0.05, pos.z + radius)
+                ]);
+                scene.add(new THREE.Line(cross1, new THREE.LineBasicMaterial({ color: COLORS.pcb, transparent: true, opacity: 0.5 })));
+                scene.add(new THREE.Line(cross2, new THREE.LineBasicMaterial({ color: COLORS.pcb, transparent: true, opacity: 0.5 })));
+            });
+        }
+
+        function createGrid() {
+            gridHelper = new THREE.GridHelper(200, 40, COLORS.grid, COLORS.grid);
+            gridHelper.position.y = -5;
+            gridHelper.material.transparent = true;
+            gridHelper.material.opacity = 0.3;
+            scene.add(gridHelper);
+        }
+
+        function createTraces() {
+            const traceMaterial = new THREE.LineBasicMaterial({ 
+                color: COLORS.trace, 
+                transparent: true, 
+                opacity: 0.6 
+            });
+            
+            // Main bus traces
+            const buses = [
+                // Horizontal data buses
+                { points: [[-25, 10], [25, 10]], y: BOARD_THICKNESS / 2 + 0.02 },
+                { points: [[-25, -10], [25, -10]], y: BOARD_THICKNESS / 2 + 0.02 },
+                { points: [[-20, 15], [20, 15]], y: BOARD_THICKNESS / 2 + 0.02 },
+                { points: [[-20, -15], [20, -15]], y: BOARD_THICKNESS / 2 + 0.02 },
+                // Vertical power rails
+                { points: [[20, -40], [20, 40]], y: BOARD_THICKNESS / 2 + 0.02 },
+                { points: [[-20, -40], [-20, 40]], y: BOARD_THICKNESS / 2 + 0.02 },
+                { points: [[25, -35], [25, 35]], y: BOARD_THICKNESS / 2 + 0.02 },
+                { points: [[-25, -35], [-25, 35]], y: BOARD_THICKNESS / 2 + 0.02 },
+            ];
+            
+            buses.forEach(bus => {
+                const geo = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(bus.points[0][0], bus.y, bus.points[0][1]),
+                    new THREE.Vector3(bus.points[1][0], bus.y, bus.points[1][1])
+                ]);
+                scene.add(new THREE.Line(geo, traceMaterial));
+            });
+            
+            // Add some random trace paths for realism
+            for (let i = 0; i < 30; i++) {
+                const startX = (Math.random() - 0.5) * BOARD_WIDTH * 0.8;
+                const startZ = (Math.random() - 0.5) * BOARD_HEIGHT * 0.8;
+                const endX = (Math.random() - 0.5) * BOARD_WIDTH * 0.8;
+                const endZ = (Math.random() - 0.5) * BOARD_HEIGHT * 0.8;
+                
+                // L-shaped trace
+                const midX = endX;
+                const midZ = startZ;
+                
+                const points = [
+                    new THREE.Vector3(startX, BOARD_THICKNESS / 2 + 0.02, startZ),
+                    new THREE.Vector3(midX, BOARD_THICKNESS / 2 + 0.02, midZ),
+                    new THREE.Vector3(endX, BOARD_THICKNESS / 2 + 0.02, endZ)
+                ];
+                
+                const geo = new THREE.BufferGeometry().setFromPoints(points);
+                scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ 
+                    color: COLORS.trace, 
+                    transparent: true, 
+                    opacity: 0.3 
+                })));
+            }
+        }
+
+        function setupControls() {
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            let spherical = { theta: 0, phi: Math.PI / 4, radius: 140 };
+            let target = new THREE.Vector3(0, 0, 0);
+            
+            function updateCamera() {
+                camera.position.x = target.x + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+                camera.position.y = target.y + spherical.radius * Math.cos(spherical.phi);
+                camera.position.z = target.z + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+                camera.lookAt(target);
+            }
+            
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+                
+                spherical.theta -= deltaX * 0.01;
+                spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi - deltaY * 0.01));
+                updateCamera();
+                
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            renderer.domElement.addEventListener('mouseup', () => isDragging = false);
+            renderer.domElement.addEventListener('mouseleave', () => isDragging = false);
+            
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                // Deployment with scroll
+                const delta = e.deltaY * -0.001;
+                deployProgress = Math.max(0, Math.min(1, deployProgress + delta));
+            }, { passive: false });
+            
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                switch(e.key.toLowerCase()) {
+                    case 'r':
+                        spherical = { theta: 0, phi: Math.PI / 4, radius: 140 };
+                        target.set(0, 0, 0);
+                        deployProgress = 0;
+                        updateCamera();
+                        break;
+                    case 't':
+                        spherical = { theta: 0, phi: 0.1, radius: 150 };
+                        updateCamera();
+                        break;
+                    case 'g':
+                        gridHelper.visible = !gridHelper.visible;
+                        break;
+                    case 'a':
+                        autoRotate = !autoRotate;
+                        break;
+                }
+            });
+            
+            // Click detection
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            
+            renderer.domElement.addEventListener('click', (e) => {
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(componentMeshes);
+                
+                if (intersects.length > 0 && intersects[0].object.userData.id) {
+                    showComponentInfo(intersects[0].object.userData);
+                } else {
+                    hideComponentInfo();
+                }
+            });
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            window.cameraControls = { spherical, target, updateCamera };
+            updateCamera();
+        }
+
+        function showComponentInfo(data) {
+            const infoDiv = document.getElementById('component-info');
+            const faceLabel = data.face === 'bottom' ? ' [BOTTOM]' : ' [TOP]';
+            document.getElementById('component-name').textContent = `> ${data.id}`;
+            document.getElementById('component-desc').textContent = (data.desc || `Type: ${data.type}`) + faceLabel;
+            infoDiv.classList.add('visible');
+        }
+
+        function hideComponentInfo() {
+            document.getElementById('component-info').classList.remove('visible');
+        }
+        
+        function updateDeployment() {
+            componentMeshes.forEach(mesh => {
+                if (mesh.userData.zOffset !== undefined) {
+                    const isBottom = mesh.userData.face === 'bottom';
+                    const direction = isBottom ? -1 : 1;
+                    const targetY = direction * mesh.userData.zOffset * deployProgress * 6;
+                    mesh.position.y = targetY;
+                }
+            });
+            
+            // Update indicator
+            document.getElementById('deployFill').style.height = (deployProgress * 100) + '%';
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (autoRotate && window.cameraControls) {
+                window.cameraControls.spherical.theta += 0.005;
+                window.cameraControls.updateCamera();
+            }
+            
+            updateDeployment();
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Button handler
+        document.getElementById('btnSolid').addEventListener('click', () => {
+            window.location.href = 'pinephone-mainboard-complete.html';
+        });
+
+        init();
+    </script>
+</body>
+</html>

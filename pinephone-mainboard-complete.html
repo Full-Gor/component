@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PinePhone Mainboard 3D - v1.1</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            height: 100vh;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #info-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 10, 20, 0.95);
+            border: 1px solid #00ff88;
+            border-radius: 8px;
+            padding: 20px;
+            min-width: 320px;
+            max-width: 400px;
+            z-index: 100;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
+            transition: opacity 0.3s ease;
+        }
+        
+        body.isolated #info-panel {
+            opacity: 0.3;
+        }
+        
+        #info-panel h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            color: #00ff88;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        #info-panel .version {
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        #info-panel .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        #info-panel .stat {
+            background: rgba(0, 255, 136, 0.1);
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #00ff88;
+        }
+        
+        #info-panel .stat-label {
+            font-size: 0.65rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        #info-panel .stat-value {
+            font-size: 1.1rem;
+            color: #00ff88;
+            font-weight: 700;
+        }
+        
+        #component-info {
+            background: rgba(255, 170, 0, 0.1);
+            border: 1px solid #ffaa00;
+            border-radius: 4px;
+            padding: 12px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        #component-info.visible {
+            display: block;
+            animation: glitch 0.3s ease;
+        }
+        
+        @keyframes glitch {
+            0% { transform: translateX(-2px); opacity: 0.8; }
+            25% { transform: translateX(2px); opacity: 1; }
+            50% { transform: translateX(-1px); opacity: 0.9; }
+            75% { transform: translateX(1px); opacity: 1; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        
+        #component-info h3 {
+            color: #ffaa00;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        
+        #component-info p {
+            font-size: 0.75rem;
+            color: #ccc;
+            line-height: 1.5;
+        }
+        
+        /* Boutons de mode */
+        .buttons-container {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+            transition: left 0.5s ease, transform 0.5s ease;
+        }
+        
+        body.isolated .buttons-container {
+            left: 30%;
+        }
+        
+        .btn-mode {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            padding: 10px 22px;
+            background: rgba(10, 30, 50, 0.9);
+            border: 2px solid #00ff88;
+            border-radius: 6px;
+            color: #00ff88;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .btn-mode:hover {
+            background: rgba(0, 100, 80, 0.4);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.6);
+        }
+        
+        .btn-mode.active {
+            background: rgba(0, 150, 100, 0.5);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.8);
+            color: #fff;
+        }
+        
+        .btn-mode.wireframe-btn {
+            border-color: #00ffff;
+            color: #00ffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+        
+        .btn-mode.wireframe-btn:hover {
+            background: rgba(0, 100, 150, 0.4);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
+        }
+        
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(10, 10, 20, 0.95);
+            border: 1px solid #0088ff;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            transition: opacity 0.3s ease;
+        }
+        
+        body.isolated #controls {
+            opacity: 0.3;
+        }
+        
+        #controls h4 {
+            font-size: 0.7rem;
+            color: #0088ff;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        #controls ul {
+            list-style: none;
+            font-size: 0.7rem;
+            color: #888;
+        }
+        
+        #controls li {
+            margin-bottom: 5px;
+        }
+        
+        #controls kbd {
+            background: #222;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #444;
+            color: #0088ff;
+            font-family: inherit;
+        }
+        
+        #legend {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(10, 10, 20, 0.95);
+            border: 1px solid #ff0088;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            min-width: 200px;
+            transition: opacity 0.3s ease;
+        }
+        
+        body.isolated #legend {
+            opacity: 0.3;
+        }
+        
+        #legend h4 {
+            font-size: 0.7rem;
+            color: #ff0088;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.7rem;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            margin-right: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0f;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        
+        #loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        #loading h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: #00ff88;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            letter-spacing: 3px;
+        }
+        
+        .loader {
+            width: 200px;
+            height: 4px;
+            background: #222;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .loader-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #0088ff);
+            transition: width 0.3s ease;
+        }
+        
+        #loading-text {
+            margin-top: 15px;
+            font-size: 0.75rem;
+            color: #666;
+        }
+        
+        /* ============================================ */
+        /* SYSTÈME D'ISOLATION */
+        /* ============================================ */
+        
+        /* Hover info */
+        .hover-info {
+            position: fixed;
+            padding: 8px 15px;
+            background: rgba(10, 20, 40, 0.95);
+            border: 2px solid rgba(0, 255, 136, 0.6);
+            border-radius: 5px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 400;
+            white-space: nowrap;
+        }
+        
+        .hover-info.visible {
+            opacity: 1;
+        }
+        
+        /* Zone d'isolation */
+        .isolation-zone {
+            position: fixed;
+            top: 50%;
+            right: 5%;
+            transform: translateY(-50%);
+            width: 450px;
+            height: 450px;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 10px;
+            background: rgba(0, 20, 10, 0.4);
+        }
+        
+        .isolation-zone.active {
+            display: flex;
+        }
+        
+        .isolated-element-container {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        
+        .isolated-element-container:active {
+            cursor: grabbing;
+        }
+        
+        /* Info isolation */
+        .isolation-info {
+            position: fixed;
+            top: 50px;
+            right: 5%;
+            width: 450px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            letter-spacing: 2px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: 250;
+        }
+        
+        .isolation-info.visible {
+            opacity: 1;
+        }
+        
+        .isolation-info .element-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: #00ff88;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+            margin-bottom: 8px;
+        }
+        
+        .isolation-info .element-desc {
+            font-size: 11px;
+            color: rgba(150, 255, 200, 0.7);
+            margin-bottom: 10px;
+        }
+        
+        .isolation-info .instructions {
+            font-size: 9px;
+            color: rgba(100, 200, 150, 0.5);
+        }
+        
+        /* Zone de retour */
+        .throw-zone {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 20%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 150;
+            pointer-events: none;
+        }
+        
+        .throw-zone.active {
+            display: flex;
+            pointer-events: auto;
+        }
+        
+        .throw-zone-indicator {
+            width: 100px;
+            height: 100px;
+            border: 3px dashed rgba(0, 255, 136, 0.3);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .throw-zone.drag-over .throw-zone-indicator {
+            border-color: rgba(0, 255, 136, 0.8);
+            background: rgba(0, 255, 136, 0.1);
+            transform: scale(1.3);
+        }
+        
+        .throw-zone-text {
+            color: rgba(0, 255, 136, 0.5);
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        
+        /* Indicateur de composants */
+        .component-list {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            max-height: 60vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 100;
+            background: rgba(10, 10, 20, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            transition: opacity 0.3s ease;
+        }
+        
+        body.isolated .component-list {
+            opacity: 0.2;
+        }
+        
+        .component-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .component-list::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        .component-list::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 2px;
+        }
+        
+        .component-list-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 9px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .component-list-item:hover {
+            background: rgba(0, 255, 136, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .component-list-item.active {
+            color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+        }
+        
+        .component-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .component-dot.connector { background: #00ff88; }
+        .component-dot.ic { background: #ff00ff; }
+        .component-dot.antenna { background: #ffff00; }
+        .component-dot.passive { background: #ff8800; }
+        .component-dot.other { background: #00ffff; }
+        
+        /* Deploy indicator */
+        .deploy-indicator {
+            position: fixed;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 200px;
+            background: rgba(0, 255, 136, 0.2);
+            border-radius: 2px;
+            z-index: 100;
+            transition: opacity 0.3s ease;
+        }
+        
+        body.isolated .deploy-indicator {
+            opacity: 0.2;
+        }
+        
+        .deploy-indicator .fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, #00ff88, #00ffff);
+            border-radius: 2px;
+            transition: height 0.1s ease-out;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
+        }
+        
+        .deploy-indicator .label {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(0, 255, 136, 0.5);
+            font-size: 9px;
+            letter-spacing: 1px;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+        
+        .scroll-info {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(0, 255, 136, 0.5);
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        body.isolated .scroll-info {
+            opacity: 0.2;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <h2>PINEPHONE PCB</h2>
+        <div class="loader">
+            <div class="loader-bar" id="loader-bar"></div>
+        </div>
+        <p id="loading-text">Initialisation...</p>
+    </div>
+    
+    <div id="canvas-container"></div>
+    
+    <div class="deploy-indicator">
+        <div class="fill" id="deployFill"></div>
+        <div class="label">EXPLODE</div>
+    </div>
+    
+    <div class="scroll-info">SCROLL = EXPLOSER • CLIC = ISOLER COMPOSANT</div>
+    
+    <!-- Hover info -->
+    <div class="hover-info" id="hoverInfo"></div>
+    
+    <!-- Zone d'isolation -->
+    <div class="isolation-zone" id="isolationZone">
+        <div class="isolated-element-container" id="isolatedContainer"></div>
+    </div>
+    
+    <!-- Info isolation -->
+    <div class="isolation-info" id="isolationInfo">
+        <div class="element-name" id="elementName">--</div>
+        <div class="element-desc" id="elementDesc">--</div>
+        <div class="instructions">GLISSER = Rotation 3D • SCROLL = Zoom • JETER À GAUCHE = Remettre • ÉCHAP = Sortir</div>
+    </div>
+    
+    <!-- Zone de retour -->
+    <div class="throw-zone" id="throwZone">
+        <div class="throw-zone-indicator">
+            <div class="throw-zone-text">RELÂCHER<br>ICI</div>
+        </div>
+    </div>
+    
+    <!-- Liste des composants -->
+    <div class="component-list" id="componentList"></div>
+    
+    <div id="info-panel">
+        <h1>PinePhone Mainboard</h1>
+        <p class="version">Version 1.1 — 2019.10.31</p>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Composants</div>
+                <div class="stat-value" id="component-count">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Connecteurs</div>
+                <div class="stat-value" id="connector-count">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">SoC</div>
+                <div class="stat-value">A64</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Antennes</div>
+                <div class="stat-value" id="antenna-count">0</div>
+            </div>
+        </div>
+        <div id="component-info">
+            <h3 id="component-name">—</h3>
+            <p id="component-desc">—</p>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <h4>Contrôles</h4>
+        <ul>
+            <li><kbd>Clic + Glisser</kbd> Rotation</li>
+            <li><kbd>Molette</kbd> Zoom / Exploser</li>
+            <li><kbd>R</kbd> Reset vue</li>
+            <li><kbd>T</kbd> Vue dessus</li>
+            <li><kbd>Clic</kbd> Isoler composant</li>
+            <li><kbd>Échap</kbd> Sortir isolation</li>
+        </ul>
+    </div>
+    
+    <div id="legend">
+        <h4>Légende</h4>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #1a472a;"></div>
+            <span>PCB (FR4)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #2a2a2a;"></div>
+            <span>Connecteurs</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #4a4a4a;"></div>
+            <span>SoC / IC</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #c9b037;"></div>
+            <span>Contacts dorés</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #1a1a1a;"></div>
+            <span>Blindage</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #8b4513;"></div>
+            <span>Antennes</span>
+        </div>
+    </div>
+    
+    <div class="buttons-container">
+        <button class="btn-mode active" id="btnSolid">SOLID</button>
+        <button class="btn-mode wireframe-btn" id="btnWireframe">WIREFRAME</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ============================================
+        // PINEPHONE MAINBOARD 3D REPRODUCTION
+        // Version 1.1 - With isolation system
+        // ============================================
+
+        const BOARD_WIDTH = 65;
+        const BOARD_HEIGHT = 130;
+        const BOARD_THICKNESS = 1.6;
+        const SCALE = 1;
+
+        const COLORS = {
+            pcb: 0x1a472a,
+            pcbDark: 0x0f2d1a,
+            copper: 0xc9b037,
+            copperDark: 0x8b7023,
+            ic: 0x2a2a2a,
+            icShiny: 0x3a3a3a,
+            connector: 0x1a1a1a,
+            connectorPlastic: 0x2a2a2a,
+            gold: 0xffd700,
+            silver: 0xc0c0c0,
+            shield: 0x1a1a1a,
+            shieldEdge: 0x3a3a3a,
+            antenna: 0x8b4513,
+            white: 0xf5f5f5,
+            resistor: 0x1a1a1a,
+            capacitor: 0x4a3c2a
+        };
+
+        // Données des composants avec leurs layers - TOP SIDE (face: 'top')
+        const COMPONENTS_DATA = {
+            connectors: [
+                // === TOP SIDE ===
+                { id: 'J1000', x: 22, y: 85, w: 28, h: 4, type: 'fpc', pins: 40, desc: 'Connecteur LCD FPC 40 pins', zOffset: 0, face: 'top' },
+                { id: 'J1001', x: 35, y: 80, w: 15, h: 3, type: 'fpc', pins: 24, desc: 'Connecteur digitizer FPC', zOffset: 0.5, face: 'top' },
+                { id: 'J1100', x: 58, y: 8, w: 18, h: 3, type: 'fpc', pins: 20, desc: 'Connecteur carte fille', zOffset: 1, face: 'top' },
+                { id: 'J1101', x: 42, y: 72, w: 6, h: 4, type: 'btb', pins: 12, desc: 'Connecteur board-to-board', zOffset: 1.5, face: 'top' },
+                { id: 'J1200', x: 3, y: 45, w: 3, h: 8, type: 'vertical', pins: 10, desc: 'Connecteur latéral gauche', zOffset: 2, face: 'top' },
+                { id: 'J1201', x: 94, y: 30, w: 3, h: 5, type: 'vertical', pins: 6, desc: 'Connecteur latéral droit', zOffset: 2.5, face: 'top' },
+                { id: 'J1300', x: 30, y: 5, w: 22, h: 4, type: 'fpc', pins: 34, desc: 'Connecteur clavier/touch', zOffset: 3, face: 'top' },
+                { id: 'J600', x: 12, y: 5, w: 8, h: 6, type: 'usb', pins: 24, desc: 'Connecteur USB-C', zOffset: 3.5, face: 'top' },
+                { id: 'J801', x: 65, y: 72, w: 12, h: 10, type: 'camera', pins: 24, desc: 'Connecteur caméra arrière', zOffset: 4, face: 'top' },
+                { id: 'J901', x: 80, y: 18, w: 12, h: 14, type: 'sim', pins: 8, desc: 'Slot SIM / MicroSD', zOffset: 4.5, face: 'top' },
+                { id: 'J501', x: 5, y: 22, w: 4, h: 5, type: 'audio', pins: 5, desc: 'Jack audio 3.5mm', zOffset: 5, face: 'top' },
+                // === BOTTOM SIDE ===
+                { id: 'J800', x: 50, y: 92, w: 20, h: 4, type: 'fpc', pins: 30, desc: 'Connecteur FPC batterie/alimentation', zOffset: 0, face: 'bottom' },
+                { id: 'X500', x: 35, y: 58, w: 6, h: 4, type: 'crystal', pins: 4, desc: 'Oscillateur cristal 32.768kHz', zOffset: 0.5, face: 'bottom' },
+                { id: 'X501', x: 48, y: 72, w: 4, h: 2, type: 'crystal', pins: 2, desc: 'Oscillateur cristal secondaire', zOffset: 0.6, face: 'bottom' },
+                { id: 'X1300', x: 22, y: 18, w: 4, h: 2, type: 'crystal', pins: 2, desc: 'Oscillateur RTC', zOffset: 0.7, face: 'bottom' },
+                { id: 'X1400', x: 88, y: 72, w: 3, h: 2, type: 'crystal', pins: 2, desc: 'Oscillateur WiFi/BT', zOffset: 0.8, face: 'bottom' },
+                { id: 'FB802', x: 52, y: 12, w: 2, h: 1, type: 'ferrite', pins: 2, desc: 'Ferrite Bead filtrage EMI', zOffset: 0.9, face: 'bottom' },
+                { id: 'FB803', x: 52, y: 14, w: 2, h: 1, type: 'ferrite', pins: 2, desc: 'Ferrite Bead filtrage EMI', zOffset: 1, face: 'bottom' }
+            ],
+            ics: [
+                // === TOP SIDE ===
+                { id: 'U1500', x: 30, y: 38, w: 24, h: 28, type: 'bga', desc: 'Allwinner A64 SoC - Quad-core ARM Cortex-A53 @ 1.2GHz', zOffset: 6, face: 'top' },
+                { id: 'U101', x: 75, y: 85, w: 4, h: 3, type: 'qfn', desc: 'AXP803 Power Management IC', zOffset: 6.5, face: 'top' },
+                // === BOTTOM SIDE ===
+                { id: 'U1', x: 42, y: 52, w: 18, h: 22, type: 'bga', desc: 'Contrôleur principal / Baseband', zOffset: 6, face: 'bottom' },
+                { id: 'DU1', x: 42, y: 38, w: 14, h: 14, type: 'bga', desc: 'LPDDR3 FBGA178 - RAM 2GB/3GB', zOffset: 6.5, face: 'bottom' },
+                { id: 'U700', x: 8, y: 48, w: 10, h: 18, type: 'bga', desc: 'Modem LTE Quectel EG25-G', zOffset: 7, face: 'bottom' },
+                { id: 'U600', x: 82, y: 35, w: 10, h: 16, type: 'qfn', desc: 'Contrôleur Audio / Codec', zOffset: 7.5, face: 'bottom' },
+                { id: 'U1000', x: 68, y: 68, w: 8, h: 6, type: 'qfn', desc: 'Contrôleur tactile', zOffset: 8, face: 'bottom' },
+                { id: 'U1200', x: 8, y: 82, w: 8, h: 5, type: 'qfn', desc: 'Régulateur de tension 1.8V', zOffset: 8.2, face: 'bottom' },
+                { id: 'U1201', x: 12, y: 92, w: 4, h: 3, type: 'qfn', desc: 'Régulateur de tension 3.3V', zOffset: 8.4, face: 'bottom' },
+                { id: 'U1202', x: 8, y: 72, w: 6, h: 5, type: 'qfn', desc: 'Convertisseur DC-DC', zOffset: 8.6, face: 'bottom' },
+                { id: 'U1301', x: 8, y: 32, w: 5, h: 6, type: 'qfn', desc: 'Driver LED / Rétroéclairage', zOffset: 8.8, face: 'bottom' },
+                { id: 'U1304', x: 18, y: 22, w: 6, h: 5, type: 'qfn', desc: 'Contrôleur charge batterie', zOffset: 9, face: 'bottom' },
+                { id: 'U1305', x: 28, y: 12, w: 4, h: 3, type: 'qfn', desc: 'Protection surtension', zOffset: 9.1, face: 'bottom' },
+                { id: 'U1308', x: 28, y: 8, w: 3, h: 2, type: 'qfn', desc: 'Capteur température', zOffset: 9.2, face: 'bottom' },
+                { id: 'U1400', x: 88, y: 62, w: 8, h: 8, type: 'qfn', desc: 'Module WiFi/Bluetooth RTL8723CS', zOffset: 9.3, face: 'bottom' },
+                { id: 'U1502', x: 72, y: 45, w: 4, h: 3, type: 'qfn', desc: 'Amplificateur RF', zOffset: 9.4, face: 'bottom' },
+                { id: 'U1503', x: 72, y: 52, w: 4, h: 3, type: 'qfn', desc: 'Switch antenne', zOffset: 9.5, face: 'bottom' },
+                { id: 'U1504', x: 62, y: 18, w: 4, h: 3, type: 'qfn', desc: 'Amplificateur audio', zOffset: 9.6, face: 'bottom' },
+                { id: 'U1505', x: 78, y: 18, w: 3, h: 2, type: 'qfn', desc: 'Référence de tension', zOffset: 9.7, face: 'bottom' },
+                { id: 'D1100', x: 38, y: 18, w: 2, h: 2, type: 'diode', desc: 'Diode ESD protection', zOffset: 9.8, face: 'bottom' },
+                { id: 'D1200', x: 62, y: 12, w: 2, h: 2, type: 'diode', desc: 'Diode Schottky', zOffset: 9.9, face: 'bottom' }
+            ],
+            antennas: [
+                // === TOP SIDE ===
+                { id: 'ANT1801', x: 5, y: 88, w: 8, h: 3, desc: 'Antenne cellulaire principale LTE/4G', zOffset: 7, face: 'top' },
+                { id: 'ANT1803', x: 5, y: 82, w: 7, h: 3, desc: 'Antenne cellulaire secondaire MIMO', zOffset: 7.5, face: 'top' },
+                { id: 'ANT1400', x: 5, y: 76, w: 6, h: 3, desc: 'Antenne WiFi 802.11 b/g/n + Bluetooth 4.0', zOffset: 8, face: 'top' },
+                { id: 'ANT1500', x: 92, y: 88, w: 5, h: 3, desc: 'Antenne GPS/GLONASS', zOffset: 8.5, face: 'top' },
+                { id: 'ANT1502', x: 92, y: 82, w: 5, h: 3, desc: 'Antenne diversité', zOffset: 9, face: 'top' }
+            ],
+            switches: [
+                { id: 'SW1', x: 82, y: 35, w: 6, h: 3, desc: 'Hardware Kill Switch - Modem/WiFi/Mic/Camera', zOffset: 9.5, face: 'top' }
+            ],
+            passives: [
+                // === TOP SIDE ===
+                { id: 'R1001', x: 42, y: 78, w: 1.5, h: 0.8, type: 'resistor', zOffset: 10, face: 'top' },
+                { id: 'R1002', x: 44, y: 78, w: 1.5, h: 0.8, type: 'resistor', zOffset: 10.2, face: 'top' },
+                { id: 'C310', x: 6, y: 65, w: 1, h: 1, type: 'capacitor', zOffset: 10.4, face: 'top' },
+                { id: 'C311', x: 6, y: 62, w: 1, h: 1, type: 'capacitor', zOffset: 10.6, face: 'top' },
+                { id: 'C900', x: 88, y: 15, w: 1, h: 1, type: 'capacitor', zOffset: 10.8, face: 'top' },
+                { id: 'C901', x: 88, y: 13, w: 1, h: 1, type: 'capacitor', zOffset: 11, face: 'top' },
+                { id: 'L1900', x: 55, y: 70, w: 2, h: 2, type: 'inductor', zOffset: 11.2, face: 'top' },
+                // === BOTTOM SIDE - Condensateurs ===
+                { id: 'C411', x: 32, y: 48, w: 1, h: 1, type: 'capacitor', zOffset: 10, face: 'bottom' },
+                { id: 'C504', x: 28, y: 52, w: 1, h: 1, type: 'capacitor', zOffset: 10.1, face: 'bottom' },
+                { id: 'C505', x: 28, y: 50, w: 1, h: 1, type: 'capacitor', zOffset: 10.2, face: 'bottom' },
+                { id: 'C518', x: 58, y: 48, w: 1, h: 1, type: 'capacitor', zOffset: 10.3, face: 'bottom' },
+                { id: 'C522', x: 30, y: 55, w: 1, h: 1, type: 'capacitor', zOffset: 10.4, face: 'bottom' },
+                { id: 'C524', x: 32, y: 55, w: 1, h: 1, type: 'capacitor', zOffset: 10.5, face: 'bottom' },
+                { id: 'C545', x: 30, y: 45, w: 1.5, h: 1.5, type: 'capacitor', zOffset: 10.6, face: 'bottom' },
+                { id: 'C547', x: 34, y: 50, w: 1, h: 1, type: 'capacitor', zOffset: 10.7, face: 'bottom' },
+                { id: 'C548', x: 30, y: 48, w: 1, h: 1, type: 'capacitor', zOffset: 10.8, face: 'bottom' },
+                { id: 'C600', x: 72, y: 38, w: 1, h: 1, type: 'capacitor', zOffset: 10.9, face: 'bottom' },
+                { id: 'C601', x: 75, y: 28, w: 1, h: 1, type: 'capacitor', zOffset: 11, face: 'bottom' },
+                { id: 'C602', x: 78, y: 22, w: 1, h: 1, type: 'capacitor', zOffset: 11.1, face: 'bottom' },
+                { id: 'C603', x: 75, y: 42, w: 1, h: 1, type: 'capacitor', zOffset: 11.2, face: 'bottom' },
+                { id: 'C604', x: 88, y: 48, w: 1, h: 1, type: 'capacitor', zOffset: 11.3, face: 'bottom' },
+                { id: 'C605', x: 88, y: 45, w: 1, h: 1, type: 'capacitor', zOffset: 11.4, face: 'bottom' },
+                { id: 'C610', x: 72, y: 25, w: 1, h: 1, type: 'capacitor', zOffset: 11.5, face: 'bottom' },
+                { id: 'C612', x: 72, y: 22, w: 1, h: 1, type: 'capacitor', zOffset: 11.6, face: 'bottom' },
+                { id: 'C616', x: 88, y: 28, w: 1, h: 1, type: 'capacitor', zOffset: 11.7, face: 'bottom' },
+                { id: 'C618', x: 88, y: 38, w: 1, h: 1, type: 'capacitor', zOffset: 11.8, face: 'bottom' },
+                { id: 'C622', x: 88, y: 42, w: 1, h: 1, type: 'capacitor', zOffset: 11.9, face: 'bottom' },
+                { id: 'C627', x: 92, y: 52, w: 1, h: 1, type: 'capacitor', zOffset: 12, face: 'bottom' },
+                { id: 'C628', x: 92, y: 55, w: 1, h: 1, type: 'capacitor', zOffset: 12.1, face: 'bottom' },
+                { id: 'C629', x: 92, y: 50, w: 1, h: 1, type: 'capacitor', zOffset: 12.2, face: 'bottom' },
+                { id: 'C630', x: 62, y: 42, w: 1, h: 1, type: 'capacitor', zOffset: 12.3, face: 'bottom' },
+                { id: 'C633', x: 92, y: 25, w: 1, h: 1, type: 'capacitor', zOffset: 12.4, face: 'bottom' },
+                { id: 'C635', x: 92, y: 28, w: 1, h: 1, type: 'capacitor', zOffset: 12.5, face: 'bottom' },
+                { id: 'C638', x: 88, y: 32, w: 1, h: 1, type: 'capacitor', zOffset: 12.6, face: 'bottom' },
+                { id: 'C642', x: 72, y: 28, w: 1, h: 1, type: 'capacitor', zOffset: 12.7, face: 'bottom' },
+                { id: 'C644', x: 18, y: 38, w: 1, h: 1, type: 'capacitor', zOffset: 12.8, face: 'bottom' },
+                { id: 'C645', x: 15, y: 42, w: 1.5, h: 1.5, type: 'capacitor', zOffset: 12.9, face: 'bottom' },
+                { id: 'C646', x: 15, y: 45, w: 1, h: 1, type: 'capacitor', zOffset: 13, face: 'bottom' },
+                { id: 'C806', x: 58, y: 35, w: 1, h: 1, type: 'capacitor', zOffset: 13.1, face: 'bottom' },
+                { id: 'C807', x: 68, y: 38, w: 1, h: 1, type: 'capacitor', zOffset: 13.2, face: 'bottom' },
+                { id: 'C808', x: 58, y: 32, w: 1, h: 1, type: 'capacitor', zOffset: 13.3, face: 'bottom' },
+                { id: 'C810', x: 12, y: 68, w: 1, h: 1, type: 'capacitor', zOffset: 13.4, face: 'bottom' },
+                { id: 'C811', x: 58, y: 42, w: 1, h: 1, type: 'capacitor', zOffset: 13.5, face: 'bottom' },
+                { id: 'C813', x: 68, y: 35, w: 1, h: 1, type: 'capacitor', zOffset: 13.6, face: 'bottom' },
+                { id: 'C816', x: 52, y: 15, w: 1, h: 1, type: 'capacitor', zOffset: 13.7, face: 'bottom' },
+                { id: 'C818', x: 48, y: 15, w: 1, h: 1, type: 'capacitor', zOffset: 13.8, face: 'bottom' },
+                { id: 'C820', x: 48, y: 18, w: 1, h: 1, type: 'capacitor', zOffset: 13.9, face: 'bottom' },
+                { id: 'C1101', x: 35, y: 8, w: 1, h: 1, type: 'capacitor', zOffset: 14, face: 'bottom' },
+                { id: 'C1102', x: 38, y: 8, w: 1, h: 1, type: 'capacitor', zOffset: 14.1, face: 'bottom' },
+                { id: 'C1104', x: 35, y: 5, w: 1, h: 1, type: 'capacitor', zOffset: 14.2, face: 'bottom' },
+                { id: 'C1105', x: 38, y: 5, w: 1, h: 1, type: 'capacitor', zOffset: 14.3, face: 'bottom' },
+                { id: 'C1108', x: 28, y: 22, w: 1.5, h: 1.5, type: 'capacitor', zOffset: 14.4, face: 'bottom' },
+                { id: 'C1302', x: 22, y: 42, w: 1, h: 1, type: 'capacitor', zOffset: 14.5, face: 'bottom' },
+                { id: 'C1402', x: 82, y: 58, w: 1, h: 1, type: 'capacitor', zOffset: 14.6, face: 'bottom' },
+                { id: 'C1416', x: 82, y: 55, w: 1, h: 1, type: 'capacitor', zOffset: 14.7, face: 'bottom' },
+                { id: 'C1502', x: 75, y: 18, w: 1, h: 1, type: 'capacitor', zOffset: 14.8, face: 'bottom' },
+                { id: 'C1505', x: 78, y: 15, w: 1, h: 1, type: 'capacitor', zOffset: 14.9, face: 'bottom' },
+                { id: 'C1506', x: 78, y: 12, w: 1, h: 1, type: 'capacitor', zOffset: 15, face: 'bottom' },
+                // === BOTTOM SIDE - Résistances ===
+                { id: 'R600', x: 78, y: 18, w: 1.2, h: 0.6, type: 'resistor', zOffset: 15.1, face: 'bottom' },
+                { id: 'R601', x: 75, y: 22, w: 1.2, h: 0.6, type: 'resistor', zOffset: 15.2, face: 'bottom' },
+                { id: 'R608', x: 88, y: 45, w: 1.2, h: 0.6, type: 'resistor', zOffset: 15.3, face: 'bottom' },
+                { id: 'R610', x: 92, y: 58, w: 1.2, h: 0.6, type: 'resistor', zOffset: 15.4, face: 'bottom' },
+                { id: 'R614', x: 15, y: 65, w: 1.2, h: 0.6, type: 'resistor', zOffset: 15.5, face: 'bottom' },
+                { id: 'R615', x: 15, y: 62, w: 1.2, h: 0.6, type: 'resistor', zOffset: 15.6, face: 'bottom' },
+                { id: 'R901', x: 28, y: 28, w: 1.2, h: 0.6, type: 'resistor', zOffset: 15.7, face: 'bottom' },
+                { id: 'R1004', x: 68, y: 72, w: 1.2, h: 0.6, type: 'resistor', zOffset: 15.8, face: 'bottom' },
+                { id: 'R1304', x: 15, y: 28, w: 1.2, h: 0.6, type: 'resistor', zOffset: 15.9, face: 'bottom' },
+                { id: 'R1317', x: 5, y: 18, w: 1.2, h: 0.6, type: 'resistor', zOffset: 16, face: 'bottom' },
+                { id: 'R1319', x: 15, y: 32, w: 1.2, h: 0.6, type: 'resistor', zOffset: 16.1, face: 'bottom' },
+                // === BOTTOM SIDE - Inductances ===
+                { id: 'L600', x: 72, y: 42, w: 2, h: 2, type: 'inductor', zOffset: 16.2, face: 'bottom' },
+                { id: 'L601', x: 68, y: 32, w: 1.5, h: 1.5, type: 'inductor', zOffset: 16.3, face: 'bottom' },
+                { id: 'L602', x: 62, y: 38, w: 1.5, h: 1.5, type: 'inductor', zOffset: 16.4, face: 'bottom' },
+                { id: 'L603', x: 78, y: 28, w: 1.5, h: 1.5, type: 'inductor', zOffset: 16.5, face: 'bottom' },
+                { id: 'L604', x: 85, y: 32, w: 1.5, h: 1.5, type: 'inductor', zOffset: 16.6, face: 'bottom' },
+                { id: 'L605', x: 85, y: 35, w: 1.5, h: 1.5, type: 'inductor', zOffset: 16.7, face: 'bottom' },
+                { id: 'L606', x: 18, y: 42, w: 1.5, h: 1.5, type: 'inductor', zOffset: 16.8, face: 'bottom' },
+                { id: 'L1100', x: 42, y: 15, w: 2, h: 2, type: 'inductor', zOffset: 16.9, face: 'bottom' },
+                { id: 'L1300', x: 5, y: 12, w: 2, h: 2, type: 'inductor', zOffset: 17, face: 'bottom' }
+            ],
+            shields: [
+                { id: 'S2', x: 8, y: 35, w: 4, h: 25, desc: 'Blindage RF', zOffset: 11.5, face: 'top' }
+            ]
+        };
+
+        let scene, camera, renderer;
+        let raycaster, mouse;
+        let componentMeshes = [];
+        let mainGroup;
+        
+        // State
+        let deployProgress = 0;
+        let isIsolated = false;
+        let isolatedComponent = null;
+        let isolatedClone = null;
+        let isoRotX = 0, isoRotY = 0, isoScale = 1;
+        let isDragging = false;
+        let isRotating = false;
+        let lastX = 0, lastY = 0;
+        let velocityX = 0, velocityY = 0;
+        let hoveredComponent = null;
+
+        // Camera controls
+        let spherical = { theta: 0, phi: Math.PI / 4, radius: 120 };
+        let target = new THREE.Vector3(0, 0, 0);
+
+        // DOM Elements
+        const hoverInfo = document.getElementById('hoverInfo');
+        const isolationZone = document.getElementById('isolationZone');
+        const isolatedContainer = document.getElementById('isolatedContainer');
+        const isolationInfo = document.getElementById('isolationInfo');
+        const elementName = document.getElementById('elementName');
+        const elementDesc = document.getElementById('elementDesc');
+        const throwZone = document.getElementById('throwZone');
+        const componentList = document.getElementById('componentList');
+
+        // Isolation scene
+        let isoScene, isoCamera, isoRenderer, isoPivot;
+
+        // Stats
+        let stats = {
+            components: 0,
+            connectors: 0,
+            antennas: 0
+        };
+
+        function init() {
+            updateLoading(10, 'Création de la scène...');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0f);
+            
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 80, 100);
+            camera.lookAt(0, 0, 0);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Main group for all components
+            mainGroup = new THREE.Group();
+            scene.add(mainGroup);
+            
+            updateLoading(20, 'Configuration des lumières...');
+            setupLights();
+            
+            updateLoading(30, 'Création du PCB...');
+            createPCB();
+            
+            updateLoading(50, 'Placement des composants...');
+            createComponents();
+            
+            updateLoading(70, 'Création de la scène d\'isolation...');
+            setupIsolationScene();
+            
+            updateLoading(80, 'Création de la liste des composants...');
+            createComponentList();
+            
+            updateLoading(90, 'Initialisation des contrôles...');
+            setupControls();
+            setupEventListeners();
+            
+            updateLoading(100, 'Terminé !');
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('hidden');
+            }, 500);
+            
+            document.getElementById('component-count').textContent = stats.components;
+            document.getElementById('connector-count').textContent = stats.connectors;
+            document.getElementById('antenna-count').textContent = stats.antennas;
+            
+            animate();
+        }
+
+        function updateLoading(percent, text) {
+            document.getElementById('loader-bar').style.width = percent + '%';
+            document.getElementById('loading-text').textContent = text;
+        }
+
+        function setupLights() {
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+            
+            const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            mainLight.position.set(50, 100, 50);
+            mainLight.castShadow = true;
+            mainLight.shadow.mapSize.width = 2048;
+            mainLight.shadow.mapSize.height = 2048;
+            scene.add(mainLight);
+            
+            const fillLight = new THREE.DirectionalLight(0x88aaff, 0.3);
+            fillLight.position.set(-50, 50, -50);
+            scene.add(fillLight);
+            
+            const rimLight = new THREE.DirectionalLight(0x00ff88, 0.2);
+            rimLight.position.set(0, -50, 100);
+            scene.add(rimLight);
+        }
+
+        function setupIsolationScene() {
+            isoScene = new THREE.Scene();
+            isoScene.background = new THREE.Color(0x050a0f);
+            
+            isoCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+            isoCamera.position.set(0, 0, 15);
+            
+            isoRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            isoRenderer.setSize(450, 450);
+            isoRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            isolatedContainer.appendChild(isoRenderer.domElement);
+            
+            const isoAmbient = new THREE.AmbientLight(0x334455, 0.6);
+            isoScene.add(isoAmbient);
+            
+            const isoMainLight = new THREE.PointLight(0x00ff88, 3, 30);
+            isoMainLight.position.set(5, 5, 10);
+            isoScene.add(isoMainLight);
+            
+            const isoBackLight = new THREE.PointLight(0x0088ff, 2, 20);
+            isoBackLight.position.set(-5, -5, -5);
+            isoScene.add(isoBackLight);
+            
+            isoPivot = new THREE.Group();
+            isoScene.add(isoPivot);
+        }
+
+        function createPCB() {
+            const pcbGeometry = new THREE.BoxGeometry(BOARD_WIDTH, BOARD_THICKNESS, BOARD_HEIGHT);
+            const pcbMaterial = new THREE.MeshStandardMaterial({
+                color: COLORS.pcb,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            
+            const pcb = new THREE.Mesh(pcbGeometry, pcbMaterial);
+            pcb.receiveShadow = true;
+            pcb.position.y = 0;
+            pcb.userData = { id: 'PCB', type: 'pcb', desc: 'Carte mère FR4 4 couches', zOffset: -1 };
+            mainGroup.add(pcb);
+            componentMeshes.push(pcb);
+            
+            createCopperTraces();
+        }
+
+        function createCopperTraces() {
+            const tracesMaterial = new THREE.MeshStandardMaterial({
+                color: COLORS.copper,
+                roughness: 0.3,
+                metalness: 0.8
+            });
+            
+            const traces = [
+                { x: 0, z: 10, w: 60, h: 0.3 },
+                { x: 0, z: -10, w: 60, h: 0.3 },
+                { x: 0, z: 20, w: 50, h: 0.3 },
+                { x: 0, z: -20, w: 50, h: 0.3 },
+                { x: 20, z: 0, w: 0.3, h: 40 },
+                { x: -20, z: 0, w: 0.3, h: 40 },
+            ];
+            
+            traces.forEach(t => {
+                const geo = new THREE.BoxGeometry(t.w, 0.05, t.h);
+                const mesh = new THREE.Mesh(geo, tracesMaterial);
+                mesh.position.set(t.x, BOARD_THICKNESS / 2 + 0.025, t.z);
+                mainGroup.add(mesh);
+            });
+        }
+
+        function createComponents() {
+            COMPONENTS_DATA.connectors.forEach(conn => {
+                createConnector(conn);
+                stats.connectors++;
+                stats.components++;
+            });
+            
+            COMPONENTS_DATA.ics.forEach(ic => {
+                createIC(ic);
+                stats.components++;
+            });
+            
+            COMPONENTS_DATA.antennas.forEach(ant => {
+                createAntenna(ant);
+                stats.antennas++;
+                stats.components++;
+            });
+            
+            COMPONENTS_DATA.switches.forEach(sw => {
+                createSwitch(sw);
+                stats.components++;
+            });
+            
+            COMPONENTS_DATA.passives.forEach(p => {
+                createPassive(p);
+                stats.components++;
+            });
+            
+            COMPONENTS_DATA.shields.forEach(sh => {
+                createShield(sh);
+                stats.components++;
+            });
+        }
+
+        function percentToCoord(xPercent, yPercent) {
+            const x = (xPercent / 100 - 0.5) * BOARD_WIDTH;
+            const z = (0.5 - yPercent / 100) * BOARD_HEIGHT;
+            return { x, z };
+        }
+
+        function createConnector(data) {
+            const pos = percentToCoord(data.x, data.y);
+            const width = (data.w / 100) * BOARD_WIDTH;
+            const depth = (data.h / 100) * BOARD_HEIGHT;
+            const height = data.type === 'usb' ? 3 : (data.type === 'camera' ? 2 : (data.type === 'crystal' || data.type === 'ferrite' ? 0.5 : 1.5));
+            const isBottom = data.face === 'bottom';
+            const yMultiplier = isBottom ? -1 : 1;
+            
+            const group = new THREE.Group();
+            
+            const bodyMaterial = new THREE.MeshStandardMaterial({
+                color: data.type === 'crystal' ? 0x888888 : (data.type === 'ferrite' ? 0x444444 : COLORS.connectorPlastic),
+                roughness: 0.6,
+                metalness: data.type === 'crystal' ? 0.8 : 0.2
+            });
+            
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(width, height, depth),
+                bodyMaterial
+            );
+            body.position.y = yMultiplier * (height / 2 + BOARD_THICKNESS / 2);
+            body.castShadow = true;
+            group.add(body);
+            
+            if ((data.type === 'fpc' || data.type === 'btb') && !isBottom) {
+                const contactMaterial = new THREE.MeshStandardMaterial({
+                    color: COLORS.gold,
+                    roughness: 0.2,
+                    metalness: 0.9
+                });
+                
+                const pinWidth = width / (data.pins || 20);
+                for (let i = 0; i < (data.pins || 20); i++) {
+                    const contact = new THREE.Mesh(
+                        new THREE.BoxGeometry(pinWidth * 0.6, 0.2, depth * 0.8),
+                        contactMaterial
+                    );
+                    contact.position.x = (i - (data.pins - 1) / 2) * pinWidth;
+                    contact.position.y = yMultiplier * (height + BOARD_THICKNESS / 2 + 0.1);
+                    group.add(contact);
+                }
+            }
+            
+            if (data.type === 'usb') {
+                const metalMaterial = new THREE.MeshStandardMaterial({
+                    color: COLORS.silver,
+                    roughness: 0.3,
+                    metalness: 0.9
+                });
+                
+                const shell = new THREE.Mesh(
+                    new THREE.BoxGeometry(width * 0.9, height * 0.8, depth * 1.2),
+                    metalMaterial
+                );
+                shell.position.y = yMultiplier * (height / 2 + BOARD_THICKNESS / 2);
+                shell.position.z = depth * 0.1;
+                group.add(shell);
+            }
+            
+            // Crystal oscillator marking
+            if (data.type === 'crystal') {
+                const markMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
+                const mark = new THREE.Mesh(
+                    new THREE.PlaneGeometry(width * 0.6, depth * 0.3),
+                    markMaterial
+                );
+                mark.rotation.x = isBottom ? Math.PI / 2 : -Math.PI / 2;
+                mark.position.y = yMultiplier * (height + BOARD_THICKNESS / 2 + 0.01);
+                group.add(mark);
+            }
+            
+            group.position.set(pos.x, 0, pos.z);
+            group.userData = { 
+                id: data.id, 
+                type: 'connector', 
+                desc: data.desc,
+                zOffset: data.zOffset,
+                face: data.face || 'top',
+                baseY: 0
+            };
+            
+            mainGroup.add(group);
+            componentMeshes.push(group);
+        }
+
+        function createIC(data) {
+            const pos = percentToCoord(data.x, data.y);
+            const width = (data.w / 100) * BOARD_WIDTH;
+            const depth = (data.h / 100) * BOARD_HEIGHT;
+            const isBottom = data.face === 'bottom';
+            const yMultiplier = isBottom ? -1 : 1;
+            
+            // Hauteur variable selon le type et l'ID
+            let height = 0.8;
+            if (data.id === 'U1500' || data.id === 'U1') height = 1.5;
+            else if (data.id === 'DU1') height = 1.2;
+            else if (data.id === 'U700') height = 1.8;
+            else if (data.type === 'diode') height = 0.4;
+            
+            const group = new THREE.Group();
+            
+            // Couleur différente pour certains ICs
+            let icColor = COLORS.ic;
+            if (data.id === 'DU1') icColor = 0x1a1a2a; // RAM plus foncée
+            if (data.id === 'U700') icColor = 0x2a2a3a; // Modem légèrement différent
+            if (data.type === 'diode') icColor = 0x222222;
+            
+            const icMaterial = new THREE.MeshStandardMaterial({
+                color: icColor,
+                roughness: 0.4,
+                metalness: 0.3
+            });
+            
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(width, height, depth),
+                icMaterial
+            );
+            body.position.y = yMultiplier * (height / 2 + BOARD_THICKNESS / 2);
+            body.castShadow = true;
+            group.add(body);
+            
+            const markMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
+            const mark = new THREE.Mesh(
+                new THREE.PlaneGeometry(width * 0.6, depth * 0.15),
+                markMaterial
+            );
+            mark.rotation.x = isBottom ? Math.PI / 2 : -Math.PI / 2;
+            mark.position.y = yMultiplier * (height + BOARD_THICKNESS / 2 + 0.01);
+            group.add(mark);
+            
+            const dotMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const dot = new THREE.Mesh(
+                new THREE.CircleGeometry(Math.min(0.8, width * 0.1), 16),
+                dotMaterial
+            );
+            dot.rotation.x = isBottom ? Math.PI / 2 : -Math.PI / 2;
+            dot.position.set(-width / 2 + Math.min(2, width * 0.2), yMultiplier * (height + BOARD_THICKNESS / 2 + 0.02), -depth / 2 + Math.min(2, depth * 0.2));
+            group.add(dot);
+            
+            if (data.type === 'bga') {
+                const ballMaterial = new THREE.MeshStandardMaterial({
+                    color: COLORS.copperDark,
+                    roughness: 0.3,
+                    metalness: 0.8
+                });
+                
+                const ballSpacing = 1.2;
+                const ballsX = Math.floor(width / ballSpacing) - 2;
+                const ballsZ = Math.floor(depth / ballSpacing) - 2;
+                
+                for (let i = 0; i < ballsX; i++) {
+                    for (let j = 0; j < ballsZ; j++) {
+                        if (Math.random() > 0.3) {
+                            const ball = new THREE.Mesh(
+                                new THREE.SphereGeometry(0.2, 8, 8),
+                                ballMaterial
+                            );
+                            ball.position.set(
+                                (i - ballsX / 2) * ballSpacing,
+                                yMultiplier * (BOARD_THICKNESS / 2 + 0.1),
+                                (j - ballsZ / 2) * ballSpacing
+                            );
+                            group.add(ball);
+                        }
+                    }
+                }
+            }
+            
+            group.position.set(pos.x, 0, pos.z);
+            group.userData = { 
+                id: data.id, 
+                type: 'ic', 
+                desc: data.desc,
+                zOffset: data.zOffset,
+                face: data.face || 'top',
+                baseY: 0
+            };
+            
+            mainGroup.add(group);
+            componentMeshes.push(group);
+        }
+
+        function createAntenna(data) {
+            const pos = percentToCoord(data.x, data.y);
+            const width = (data.w / 100) * BOARD_WIDTH;
+            const depth = (data.h / 100) * BOARD_HEIGHT;
+            
+            const group = new THREE.Group();
+            
+            const antMaterial = new THREE.MeshStandardMaterial({
+                color: COLORS.antenna,
+                roughness: 0.5,
+                metalness: 0.6
+            });
+            
+            const base = new THREE.Mesh(
+                new THREE.BoxGeometry(width, 0.5, depth),
+                antMaterial
+            );
+            base.position.y = 0.25 + BOARD_THICKNESS / 2;
+            group.add(base);
+            
+            const coaxMaterial = new THREE.MeshStandardMaterial({
+                color: COLORS.gold,
+                roughness: 0.2,
+                metalness: 0.9
+            });
+            
+            const coax = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.4, 0.4, 0.8, 16),
+                coaxMaterial
+            );
+            coax.position.y = 0.9 + BOARD_THICKNESS / 2;
+            group.add(coax);
+            
+            group.position.set(pos.x, 0, pos.z);
+            group.userData = { 
+                id: data.id, 
+                type: 'antenna', 
+                desc: data.desc,
+                zOffset: data.zOffset,
+                baseY: 0
+            };
+            
+            mainGroup.add(group);
+            componentMeshes.push(group);
+        }
+
+        function createSwitch(data) {
+            const pos = percentToCoord(data.x, data.y);
+            const width = (data.w / 100) * BOARD_WIDTH;
+            const depth = (data.h / 100) * BOARD_HEIGHT;
+            
+            const group = new THREE.Group();
+            
+            const bodyMaterial = new THREE.MeshStandardMaterial({
+                color: 0x444444,
+                roughness: 0.5
+            });
+            
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(width, 1.2, depth),
+                bodyMaterial
+            );
+            body.position.y = 0.6 + BOARD_THICKNESS / 2;
+            body.castShadow = true;
+            group.add(body);
+            
+            const actMaterial = new THREE.MeshStandardMaterial({
+                color: 0x888888,
+                roughness: 0.3,
+                metalness: 0.5
+            });
+            
+            const actuator = new THREE.Mesh(
+                new THREE.BoxGeometry(width * 0.4, 0.5, depth * 0.6),
+                actMaterial
+            );
+            actuator.position.set(width * 0.2, 1.5 + BOARD_THICKNESS / 2, 0);
+            group.add(actuator);
+            
+            group.position.set(pos.x, 0, pos.z);
+            group.userData = { 
+                id: data.id, 
+                type: 'switch', 
+                desc: data.desc,
+                zOffset: data.zOffset,
+                baseY: 0
+            };
+            
+            mainGroup.add(group);
+            componentMeshes.push(group);
+        }
+
+        function createPassive(data) {
+            const pos = percentToCoord(data.x, data.y);
+            const width = (data.w / 100) * BOARD_WIDTH;
+            const depth = (data.h / 100) * BOARD_HEIGHT;
+            const isBottom = data.face === 'bottom';
+            const yMultiplier = isBottom ? -1 : 1;
+            
+            let color = COLORS.resistor;
+            if (data.type === 'capacitor') color = COLORS.capacitor;
+            if (data.type === 'inductor') color = 0x2a4a3a;
+            
+            const group = new THREE.Group();
+            
+            const material = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.6,
+                metalness: 0.2
+            });
+            
+            const bodyHeight = data.type === 'inductor' ? 0.5 : 0.3;
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(width, bodyHeight, depth),
+                material
+            );
+            body.position.y = yMultiplier * (bodyHeight / 2 + BOARD_THICKNESS / 2);
+            group.add(body);
+            
+            const termMaterial = new THREE.MeshStandardMaterial({
+                color: COLORS.silver,
+                roughness: 0.3,
+                metalness: 0.8
+            });
+            
+            const term1 = new THREE.Mesh(
+                new THREE.BoxGeometry(width * 0.2, bodyHeight + 0.05, depth),
+                termMaterial
+            );
+            term1.position.set(-width * 0.4, yMultiplier * ((bodyHeight + 0.05) / 2 + BOARD_THICKNESS / 2), 0);
+            group.add(term1);
+            
+            const term2 = new THREE.Mesh(
+                new THREE.BoxGeometry(width * 0.2, bodyHeight + 0.05, depth),
+                termMaterial
+            );
+            term2.position.set(width * 0.4, yMultiplier * ((bodyHeight + 0.05) / 2 + BOARD_THICKNESS / 2), 0);
+            group.add(term2);
+            
+            group.position.set(pos.x, 0, pos.z);
+            group.userData = { 
+                id: data.id, 
+                type: 'passive', 
+                desc: `${data.type} SMD`,
+                zOffset: data.zOffset,
+                face: data.face || 'top',
+                baseY: 0
+            };
+            
+            mainGroup.add(group);
+            componentMeshes.push(group);
+        }
+
+        function createShield(data) {
+            const pos = percentToCoord(data.x, data.y);
+            const width = (data.w / 100) * BOARD_WIDTH;
+            const depth = (data.h / 100) * BOARD_HEIGHT;
+            
+            const group = new THREE.Group();
+            
+            const shieldMaterial = new THREE.MeshStandardMaterial({
+                color: COLORS.shield,
+                roughness: 0.4,
+                metalness: 0.7
+            });
+            
+            const wallThickness = 0.3;
+            const height = 2;
+            
+            const walls = [
+                { x: 0, z: depth / 2 - wallThickness / 2, w: width, d: wallThickness },
+                { x: 0, z: -depth / 2 + wallThickness / 2, w: width, d: wallThickness },
+                { x: width / 2 - wallThickness / 2, z: 0, w: wallThickness, d: depth },
+                { x: -width / 2 + wallThickness / 2, z: 0, w: wallThickness, d: depth }
+            ];
+            
+            walls.forEach(w => {
+                const wall = new THREE.Mesh(
+                    new THREE.BoxGeometry(w.w, height, w.d),
+                    shieldMaterial
+                );
+                wall.position.set(w.x, height / 2 + BOARD_THICKNESS / 2, w.z);
+                wall.castShadow = true;
+                group.add(wall);
+            });
+            
+            const lid = new THREE.Mesh(
+                new THREE.BoxGeometry(width, 0.2, depth),
+                shieldMaterial
+            );
+            lid.position.y = height + BOARD_THICKNESS / 2;
+            lid.castShadow = true;
+            group.add(lid);
+            
+            group.position.set(pos.x, 0, pos.z);
+            group.userData = { 
+                id: data.id, 
+                type: 'shield', 
+                desc: data.desc,
+                zOffset: data.zOffset,
+                baseY: 0
+            };
+            
+            mainGroup.add(group);
+            componentMeshes.push(group);
+        }
+
+        function createComponentList() {
+            const allComponents = [
+                ...COMPONENTS_DATA.connectors.map(c => ({ ...c, category: 'connector' })),
+                ...COMPONENTS_DATA.ics.map(c => ({ ...c, category: 'ic' })),
+                ...COMPONENTS_DATA.antennas.map(c => ({ ...c, category: 'antenna' })),
+                ...COMPONENTS_DATA.switches.map(c => ({ ...c, category: 'other' })),
+                ...COMPONENTS_DATA.passives.map(c => ({ ...c, category: 'passive' })),
+                ...COMPONENTS_DATA.shields.map(c => ({ ...c, category: 'other' }))
+            ];
+            
+            // Séparer par face
+            const topComponents = allComponents.filter(c => c.face !== 'bottom');
+            const bottomComponents = allComponents.filter(c => c.face === 'bottom');
+            
+            // Header TOP
+            const topHeader = document.createElement('div');
+            topHeader.style.cssText = 'color: #00ff88; font-size: 10px; padding: 5px; border-bottom: 1px solid #00ff88; margin-bottom: 5px; font-weight: bold;';
+            topHeader.textContent = `▲ TOP (${topComponents.length})`;
+            componentList.appendChild(topHeader);
+            
+            topComponents.forEach((comp, index) => {
+                const item = document.createElement('div');
+                item.className = 'component-list-item';
+                item.dataset.id = comp.id;
+                item.innerHTML = `<div class="component-dot ${comp.category}"></div><span>${comp.id}</span>`;
+                item.addEventListener('click', () => {
+                    const mesh = componentMeshes.find(m => m.userData.id === comp.id);
+                    if (mesh) isolateComponent(mesh);
+                });
+                componentList.appendChild(item);
+            });
+            
+            // Header BOTTOM
+            const bottomHeader = document.createElement('div');
+            bottomHeader.style.cssText = 'color: #ff8800; font-size: 10px; padding: 5px; border-bottom: 1px solid #ff8800; margin: 10px 0 5px 0; font-weight: bold;';
+            bottomHeader.textContent = `▼ BOTTOM (${bottomComponents.length})`;
+            componentList.appendChild(bottomHeader);
+            
+            bottomComponents.forEach((comp, index) => {
+                const item = document.createElement('div');
+                item.className = 'component-list-item';
+                item.dataset.id = comp.id;
+                item.innerHTML = `<div class="component-dot ${comp.category}"></div><span>${comp.id}</span>`;
+                item.addEventListener('click', () => {
+                    const mesh = componentMeshes.find(m => m.userData.id === comp.id);
+                    if (mesh) isolateComponent(mesh);
+                });
+                componentList.appendChild(item);
+            });
+        }
+
+        function updateCamera() {
+            camera.position.x = target.x + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+            camera.position.y = target.y + spherical.radius * Math.cos(spherical.phi);
+            camera.position.z = target.z + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+            camera.lookAt(target);
+        }
+
+        function setupControls() {
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                if (e.button === 0 && !isIsolated) {
+                    isRotating = true;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                }
+            });
+            
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (isRotating && !isIsolated) {
+                    const deltaX = e.clientX - lastX;
+                    const deltaY = e.clientY - lastY;
+                    
+                    spherical.theta -= deltaX * 0.01;
+                    spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi - deltaY * 0.01));
+                    updateCamera();
+                    
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                }
+                
+                // Hover detection
+                if (!isIsolated) {
+                    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                    
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersects = raycaster.intersectObjects(componentMeshes, true);
+                    
+                    if (intersects.length > 0) {
+                        let obj = intersects[0].object;
+                        while (obj.parent && !obj.userData.id) {
+                            obj = obj.parent;
+                        }
+                        
+                        if (obj.userData.id) {
+                            hoveredComponent = obj;
+                            hoverInfo.textContent = obj.userData.id;
+                            hoverInfo.style.left = (e.clientX + 15) + 'px';
+                            hoverInfo.style.top = (e.clientY - 10) + 'px';
+                            hoverInfo.classList.add('visible');
+                            renderer.domElement.style.cursor = 'pointer';
+                            
+                            document.querySelectorAll('.component-list-item').forEach(item => {
+                                item.classList.toggle('active', item.dataset.id === obj.userData.id);
+                            });
+                        }
+                    } else {
+                        hoveredComponent = null;
+                        hoverInfo.classList.remove('visible');
+                        renderer.domElement.style.cursor = 'default';
+                        document.querySelectorAll('.component-list-item').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                    }
+                }
+            });
+            
+            renderer.domElement.addEventListener('mouseup', () => {
+                isRotating = false;
+            });
+            
+            renderer.domElement.addEventListener('mouseleave', () => {
+                isRotating = false;
+                hoverInfo.classList.remove('visible');
+            });
+            
+            // Click to isolate
+            renderer.domElement.addEventListener('click', (e) => {
+                if (isIsolated || isRotating) return;
+                
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(componentMeshes, true);
+                
+                if (intersects.length > 0) {
+                    let obj = intersects[0].object;
+                    while (obj.parent && !obj.userData.id) {
+                        obj = obj.parent;
+                    }
+                    
+                    if (obj.userData.id) {
+                        isolateComponent(obj);
+                    }
+                }
+            });
+            
+            // Wheel for deploy/zoom
+            window.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (isIsolated) {
+                    isoScale = Math.max(0.3, Math.min(4, isoScale - e.deltaY * 0.001));
+                } else {
+                    const delta = e.deltaY * -0.001;
+                    deployProgress = Math.max(0, Math.min(1, deployProgress + delta));
+                }
+            }, { passive: false });
+            
+            // Isolation controls
+            isolatedContainer.addEventListener('mousedown', (e) => {
+                if (!isIsolated) return;
+                isDragging = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                isolatedContainer.style.cursor = 'grabbing';
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging || !isIsolated) return;
+                
+                const dx = e.clientX - lastX;
+                const dy = e.clientY - lastY;
+                velocityX = dx * 0.5;
+                velocityY = dy * 0.5;
+                isoRotY += velocityX;
+                isoRotX -= velocityY;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                
+                throwZone.classList.toggle('drag-over', e.clientX < window.innerWidth * 0.2);
+            });
+            
+            document.addEventListener('mouseup', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                isolatedContainer.style.cursor = 'grab';
+                
+                if (e.clientX < window.innerWidth * 0.2) {
+                    restoreComponent();
+                }
+            });
+            
+            // Keyboard
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && isIsolated) {
+                    restoreComponent();
+                }
+                if (e.key === 'r' || e.key === 'R') {
+                    spherical = { theta: 0, phi: Math.PI / 4, radius: 120 };
+                    target.set(0, 0, 0);
+                    updateCamera();
+                }
+                if (e.key === 't' || e.key === 'T') {
+                    spherical = { theta: 0, phi: 0.1, radius: 150 };
+                    target.set(0, 0, 0);
+                    updateCamera();
+                }
+            });
+            
+            // Resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            updateCamera();
+        }
+
+        function setupEventListeners() {
+            // Wireframe button
+            document.getElementById('btnWireframe').addEventListener('click', () => {
+                window.location.href = 'pinephone-wireframe-complete.html';
+            });
+            
+            document.getElementById('btnSolid').addEventListener('click', () => {
+                // Already on solid view
+            });
+        }
+
+        function isolateComponent(component) {
+            isIsolated = true;
+            isolatedComponent = component;
+            isoRotX = 0;
+            isoRotY = 0;
+            isoScale = 1;
+            velocityX = 0;
+            velocityY = 0;
+            
+            // Clone component
+            isolatedClone = component.clone();
+            isolatedClone.position.set(0, 0, 0);
+            isoPivot.add(isolatedClone);
+            
+            // Dim original
+            component.traverse(child => {
+                if (child.material) {
+                    child.userData.originalOpacity = child.material.opacity !== undefined ? child.material.opacity : 1;
+                    child.material = child.material.clone();
+                    child.material.transparent = true;
+                    child.material.opacity = 0.15;
+                }
+            });
+            
+            // Show UI
+            document.body.classList.add('isolated');
+            isolationZone.classList.add('active');
+            isolationInfo.classList.add('visible');
+            throwZone.classList.add('active');
+            
+            elementName.textContent = component.userData.id;
+            const faceLabel = component.userData.face === 'bottom' ? ' [BOTTOM]' : ' [TOP]';
+            elementDesc.textContent = (component.userData.desc || `Type: ${component.userData.type}`) + faceLabel;
+            
+            hoverInfo.classList.remove('visible');
+        }
+
+        function restoreComponent() {
+            if (!isIsolated || !isolatedComponent) return;
+            
+            // Restore opacity
+            isolatedComponent.traverse(child => {
+                if (child.material && child.userData.originalOpacity !== undefined) {
+                    child.material.opacity = child.userData.originalOpacity;
+                    if (child.userData.originalOpacity >= 1) {
+                        child.material.transparent = false;
+                    }
+                }
+            });
+            
+            // Remove clone
+            if (isolatedClone) {
+                isoPivot.remove(isolatedClone);
+                isolatedClone = null;
+            }
+            
+            // Hide UI
+            document.body.classList.remove('isolated');
+            isolationZone.classList.remove('active');
+            isolationInfo.classList.remove('visible');
+            throwZone.classList.remove('active');
+            throwZone.classList.remove('drag-over');
+            
+            isIsolated = false;
+            isolatedComponent = null;
+        }
+
+        function updateDeployment() {
+            componentMeshes.forEach(mesh => {
+                if (mesh.userData.zOffset !== undefined) {
+                    const isBottom = mesh.userData.face === 'bottom';
+                    // Les composants BOTTOM vont vers le bas (Y négatif), TOP vers le haut
+                    const direction = isBottom ? -1 : 1;
+                    const targetY = direction * mesh.userData.zOffset * deployProgress * 6;
+                    mesh.position.y = targetY;
+                }
+            });
+            
+            document.getElementById('deployFill').style.height = (deployProgress * 100) + '%';
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            updateDeployment();
+            
+            renderer.render(scene, camera);
+            
+            // Isolation animation
+            if (isIsolated && isolatedClone) {
+                if (!isDragging) {
+                    velocityX *= 0.95;
+                    velocityY *= 0.95;
+                    isoRotY += velocityX;
+                    isoRotX -= velocityY;
+                }
+                
+                isoPivot.rotation.x = isoRotX * Math.PI / 180;
+                isoPivot.rotation.y = isoRotY * Math.PI / 180;
+                isoPivot.scale.setScalar(isoScale);
+                
+                isoRenderer.render(isoScene, isoCamera);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
