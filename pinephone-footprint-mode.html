@@ -1,0 +1,2547 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PinePhone Mainboard 3D - Footprint Mode</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #f0f0f0;
+            overflow: hidden;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        
+        /* Loading */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0f0a 0%, #0a1a0f 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        
+        #loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        #loading h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: #00ff88;
+            font-size: 1.8rem;
+            letter-spacing: 8px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+        }
+        
+        .loader {
+            width: 200px;
+            height: 4px;
+            background: rgba(0, 255, 136, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .loader-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00ffcc);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 20px #00ff88;
+        }
+        
+        #loading-text {
+            color: #00aa66;
+            margin-top: 15px;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+        }
+        
+        /* Info panel */
+        #info-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(10, 20, 15, 0.95);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            color: #fff;
+            z-index: 100;
+            min-width: 280px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #info-panel h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            color: #00ff88;
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+        }
+        
+        #info-panel .version {
+            font-size: 0.7rem;
+            color: #00aa66;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .stat {
+            background: rgba(0, 255, 136, 0.05);
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 255, 136, 0.1);
+        }
+        
+        .stat-label {
+            font-size: 0.65rem;
+            color: #00aa66;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            color: #00ff88;
+            margin-top: 2px;
+        }
+        
+        /* Controls */
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(10, 20, 15, 0.9);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 6px;
+            padding: 12px 15px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.7rem;
+            z-index: 100;
+        }
+        
+        #controls kbd {
+            background: rgba(0, 255, 136, 0.2);
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #00ff88;
+            margin: 0 2px;
+        }
+        
+        /* Hover info */
+        .hover-info {
+            position: fixed;
+            background: rgba(10, 20, 15, 0.95);
+            border: 1px solid #00ff88;
+            padding: 8px 12px;
+            border-radius: 4px;
+            color: #00ff88;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 200;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+        
+        .hover-info.visible {
+            opacity: 1;
+        }
+        
+        /* Buttons */
+        .buttons-container {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        
+        .btn-mode {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            padding: 10px 22px;
+            background: rgba(0, 20, 10, 0.9);
+            border: 2px solid #00ff88;
+            border-radius: 6px;
+            color: #00ff88;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .btn-mode:hover {
+            background: rgba(0, 50, 30, 0.9);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.5);
+        }
+        
+        .btn-mode.active {
+            background: rgba(0, 255, 136, 0.2);
+        }
+        
+        .btn-reset {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            padding: 8px 16px;
+            background: rgba(255, 100, 50, 0.2);
+            border: 2px solid #ff6633;
+            border-radius: 6px;
+            color: #ff6633;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 100, 50, 0.3);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .btn-reset:hover {
+            background: rgba(255, 100, 50, 0.4);
+            box-shadow: 0 0 25px rgba(255, 100, 50, 0.6);
+        }
+        
+        /* Component scrollbars */
+        .component-scrollbars {
+            position: fixed;
+            pointer-events: none;
+            z-index: 300;
+            display: none;
+        }
+        
+        .component-scrollbars.visible {
+            display: block;
+        }
+        
+        .scrollbar-v {
+            position: absolute;
+            width: 12px;
+            height: 100px;
+            background: rgba(0, 150, 100, 0.2);
+            border: 2px solid rgba(0, 150, 100, 0.6);
+            border-radius: 6px;
+            pointer-events: auto;
+            cursor: ns-resize;
+            padding: 5px 0;
+        }
+        
+        .scrollbar-v .thumb {
+            position: absolute;
+            width: 100%;
+            height: 30px;
+            background: linear-gradient(to bottom, #00aa66, #00cc88);
+            border-radius: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 0 10px rgba(0, 150, 100, 0.6);
+        }
+        
+        .scrollbar-h {
+            position: absolute;
+            width: 100px;
+            height: 12px;
+            background: rgba(0, 150, 100, 0.2);
+            border: 2px solid rgba(0, 150, 100, 0.6);
+            border-radius: 6px;
+            pointer-events: auto;
+            cursor: ew-resize;
+            padding: 0 5px;
+        }
+        
+        .scrollbar-h .thumb {
+            position: absolute;
+            height: 100%;
+            width: 30px;
+            background: linear-gradient(to right, #00aa66, #00cc88);
+            border-radius: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 10px rgba(0, 150, 100, 0.6);
+        }
+        
+        .scrollbar-label {
+            position: absolute;
+            color: rgba(0, 100, 70, 0.8);
+            font-size: 9px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .scrollbar-v .scrollbar-label {
+            writing-mode: vertical-rl;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .scrollbar-h .scrollbar-label {
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        /* Zone de capture élargie autour des scrollbars */
+        .scrollbar-v::before,
+        .scrollbar-h::before {
+            content: '';
+            position: absolute;
+            top: -15px;
+            left: -15px;
+            right: -15px;
+            bottom: -15px;
+        }
+        
+        body.dragging-component {
+            cursor: grabbing !important;
+        }
+        
+        body.dragging-component * {
+            cursor: grabbing !important;
+        }
+        
+        /* Floating component info */
+        .component-floating-info {
+            position: fixed;
+            background: rgba(10, 20, 15, 0.95);
+            border: 1px solid #00ff88;
+            border-radius: 4px;
+            padding: 8px 12px;
+            color: #00ff88;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 350;
+            display: none;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+        }
+        
+        .component-floating-info.visible {
+            display: block;
+        }
+        
+        .component-floating-info .name {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        
+        .component-floating-info .hint {
+            font-size: 9px;
+            color: rgba(0, 255, 136, 0.6);
+        }
+        
+        /* Compatibility status */
+        .compatibility-status {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            padding: 15px 30px;
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 400;
+            display: none;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        
+        .compatibility-status.compatible {
+            display: block;
+            background: rgba(0, 255, 255, 0.2);
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+        }
+        
+        .compatibility-status.incompatible {
+            display: block;
+            background: rgba(255, 50, 50, 0.2);
+            border: 2px solid #ff3333;
+            color: #ff3333;
+            box-shadow: 0 0 30px rgba(255, 50, 50, 0.5);
+            animation: blink 0.3s infinite;
+        }
+        
+        .compatibility-status.floating {
+            display: block;
+            background: rgba(255, 150, 50, 0.2);
+            border: 2px solid #ff9933;
+            color: #ff9933;
+            box-shadow: 0 0 30px rgba(255, 150, 50, 0.5);
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Deploy indicator */
+        .deploy-indicator {
+            position: fixed;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 200px;
+            background: rgba(0, 255, 136, 0.2);
+            border-radius: 2px;
+            z-index: 100;
+        }
+        
+        .deploy-indicator .fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, #00ff88, #00ffff);
+            border-radius: 2px;
+            transition: height 0.1s ease-out;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
+        }
+        
+        .deploy-indicator .label {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(0, 255, 136, 0.5);
+            font-size: 9px;
+            letter-spacing: 1px;
+            writing-mode: vertical-rl;
+        }
+        
+        .scroll-info {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(0, 255, 136, 0.5);
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            pointer-events: none;
+        }
+        
+        /* Footprint legend */
+        .footprint-legend {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            background: rgba(10, 20, 15, 0.95);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            font-size: 10px;
+        }
+        
+        .footprint-legend h3 {
+            font-family: 'Orbitron', sans-serif;
+            color: #00ff88;
+            font-size: 11px;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <h2>FOOTPRINT MODE</h2>
+        <div class="loader">
+            <div class="loader-bar" id="loader-bar"></div>
+        </div>
+        <p id="loading-text">Initialisation...</p>
+    </div>
+    
+    <div id="canvas-container"></div>
+    
+    <div class="deploy-indicator">
+        <div class="fill" id="deployFill"></div>
+        <div class="label">EXPLODE</div>
+    </div>
+    
+    <div class="scroll-info">DRAG = DÉPLACER • SURVOL = MANIPULER • CYAN = COMPATIBLE • ROUGE = INCOMPATIBLE</div>
+    
+    <!-- Component scrollbars -->
+    <div class="component-scrollbars" id="componentScrollbars">
+        <div class="scrollbar-v" id="scrollbarV">
+            <div class="thumb" id="thumbV"></div>
+            <span class="scrollbar-label">ROT Y</span>
+        </div>
+        <div class="scrollbar-h" id="scrollbarH">
+            <div class="thumb" id="thumbH"></div>
+            <span class="scrollbar-label">ROT X</span>
+        </div>
+    </div>
+    
+    <!-- Floating component info -->
+    <div class="component-floating-info" id="floatingInfo">
+        <div class="name" id="floatingName">--</div>
+        <div class="hint">MOLETTE = Zoom • BARRES = Rotation</div>
+    </div>
+    
+    <!-- Compatibility status -->
+    <div class="compatibility-status" id="compatibilityStatus">COMPATIBLE</div>
+    
+    <!-- Hover info -->
+    <div class="hover-info" id="hoverInfo"></div>
+    
+    <div id="info-panel">
+        <h1>PinePhone Mainboard</h1>
+        <p class="version">FOOTPRINT MODE — v1.1</p>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Composants</div>
+                <div class="stat-value" id="component-count">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Footprints</div>
+                <div class="stat-value" id="footprint-count">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Pads</div>
+                <div class="stat-value" id="pad-count">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Connectés</div>
+                <div class="stat-value" id="connected-count">0</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <kbd>R</kbd> Reset vue 
+        <kbd>T</kbd> Vue dessus 
+        <kbd>P</kbd> Toggle pads
+    </div>
+    
+    <div class="footprint-legend">
+        <h3>FOOTPRINTS</h3>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00ffff;"></div>
+            <span>Compatible</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff3333;"></div>
+            <span>Incompatible</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff9933;"></div>
+            <span>Flottant</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00ff88;"></div>
+            <span>Connecté</span>
+        </div>
+    </div>
+    
+    <div class="buttons-container">
+        <button class="btn-reset" id="btnReset">RESET</button>
+        <button class="btn-mode active" id="btnSolid">SOLID</button>
+        <button class="btn-mode" id="btnWireframe">WIREFRAME</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ============================================
+        // PINEPHONE MAINBOARD 3D - FOOTPRINT MODE
+        // With footprint compatibility system
+        // ============================================
+
+        const BOARD_WIDTH = 65;
+        const BOARD_HEIGHT = 130;
+        const BOARD_THICKNESS = 1.6;
+        const SCALE = 1;
+
+        const COLORS = {
+            pcb: 0x1a472a,
+            pcbEdge: 0x0d2818,
+            copper: 0xc9b037,
+            ic: 0x2a2a2a,
+            gold: 0xffd700,
+            pad: 0xc9b037,
+            padHighlight: 0x00ffff,
+            padIncompatible: 0xff3333,
+            padConnected: 0x00ff88,
+            componentCompatible: 0x00ffff,
+            componentIncompatible: 0xff3333,
+            componentFloating: 0xff9933
+        };
+
+        // ============================================
+        // FOOTPRINT DEFINITIONS
+        // ============================================
+        
+        // Footprint types define the pad pattern for each component type
+        const FOOTPRINT_TYPES = {
+            // BGA - Ball Grid Array
+            'bga-large': { type: 'grid', rows: 14, cols: 12, pitch: 0.8, padSize: 0.4 },
+            'bga-medium': { type: 'grid', rows: 10, cols: 10, pitch: 0.8, padSize: 0.4 },
+            'bga-small': { type: 'grid', rows: 8, cols: 8, pitch: 0.65, padSize: 0.35 },
+            
+            // QFN - Quad Flat No-leads
+            'qfn-large': { type: 'peripheral', sides: 4, pinsPerSide: 12, pitch: 0.5, padSize: 0.3 },
+            'qfn-medium': { type: 'peripheral', sides: 4, pinsPerSide: 8, pitch: 0.5, padSize: 0.3 },
+            'qfn-small': { type: 'peripheral', sides: 4, pinsPerSide: 4, pitch: 0.5, padSize: 0.25 },
+            
+            // FPC - Flexible Printed Circuit
+            'fpc-40': { type: 'linear', pins: 40, pitch: 0.5, padSize: 0.3 },
+            'fpc-34': { type: 'linear', pins: 34, pitch: 0.5, padSize: 0.3 },
+            'fpc-30': { type: 'linear', pins: 30, pitch: 0.5, padSize: 0.3 },
+            'fpc-24': { type: 'linear', pins: 24, pitch: 0.5, padSize: 0.3 },
+            'fpc-20': { type: 'linear', pins: 20, pitch: 0.5, padSize: 0.3 },
+            
+            // Special connectors
+            'usb-c': { type: 'usb', pins: 24, padSize: 0.3 },
+            'camera': { type: 'btb', pins: 24, pitch: 0.4, padSize: 0.25 },
+            'sim': { type: 'sim', pins: 8, padSize: 0.5 },
+            'audio': { type: 'audio', pins: 5, padSize: 0.4 },
+            'btb': { type: 'btb', pins: 12, pitch: 0.4, padSize: 0.25 },
+            'vertical': { type: 'through-hole', pins: 10, pitch: 1.0, padSize: 0.6 },
+            
+            // Crystal
+            'crystal-4': { type: 'crystal', pins: 4, padSize: 0.5 },
+            'crystal-2': { type: 'crystal', pins: 2, padSize: 0.4 },
+            
+            // Passives
+            'smd-0603': { type: 'two-terminal', padSize: 0.4, spacing: 1.0 },
+            'smd-0402': { type: 'two-terminal', padSize: 0.3, spacing: 0.8 },
+            'smd-0805': { type: 'two-terminal', padSize: 0.5, spacing: 1.2 },
+            
+            // Diode
+            'diode': { type: 'two-terminal', padSize: 0.4, spacing: 1.5 },
+            
+            // Antenna
+            'antenna': { type: 'coax', padSize: 0.8 },
+            
+            // Switch
+            'switch': { type: 'switch', pins: 6, pitch: 1.0, padSize: 0.4 },
+            
+            // Ferrite
+            'ferrite': { type: 'two-terminal', padSize: 0.3, spacing: 1.0 },
+            
+            // Shield
+            'shield': { type: 'shield', padSize: 0.5 }
+        };
+
+        // Component data with footprint assignments
+        const COMPONENTS_DATA = {
+            connectors: [
+                { id: 'J1000', x: 22, y: 85, w: 28, h: 4, footprint: 'fpc-40', desc: 'LCD FPC 40 pins', zOffset: 0, face: 'top' },
+                { id: 'J1001', x: 35, y: 80, w: 15, h: 3, footprint: 'fpc-24', desc: 'Digitizer FPC', zOffset: 0.5, face: 'top' },
+                { id: 'J1100', x: 58, y: 8, w: 18, h: 3, footprint: 'fpc-20', desc: 'Daughter board', zOffset: 1, face: 'top' },
+                { id: 'J1101', x: 42, y: 72, w: 6, h: 4, footprint: 'btb', desc: 'Board-to-board', zOffset: 1.5, face: 'top' },
+                { id: 'J1200', x: 3, y: 45, w: 3, h: 8, footprint: 'vertical', desc: 'Left port', zOffset: 2, face: 'top' },
+                { id: 'J1201', x: 94, y: 30, w: 3, h: 5, footprint: 'vertical', desc: 'Right port', zOffset: 2.5, face: 'top' },
+                { id: 'J1300', x: 30, y: 5, w: 22, h: 4, footprint: 'fpc-34', desc: 'Keyboard/Touch', zOffset: 3, face: 'top' },
+                { id: 'J600', x: 12, y: 5, w: 8, h: 6, footprint: 'usb-c', desc: 'USB Type-C', zOffset: 3.5, face: 'top' },
+                { id: 'J801', x: 65, y: 72, w: 12, h: 10, footprint: 'camera', desc: 'Rear Camera', zOffset: 4, face: 'top' },
+                { id: 'J901', x: 80, y: 18, w: 12, h: 14, footprint: 'sim', desc: 'SIM/MicroSD', zOffset: 4.5, face: 'top' },
+                { id: 'J501', x: 5, y: 22, w: 4, h: 5, footprint: 'audio', desc: '3.5mm Audio', zOffset: 5, face: 'top' },
+                { id: 'J800', x: 50, y: 92, w: 20, h: 4, footprint: 'fpc-30', desc: 'Battery FPC', zOffset: 0, face: 'bottom' },
+                { id: 'X500', x: 35, y: 58, w: 6, h: 4, footprint: 'crystal-4', desc: 'Crystal 32.768kHz', zOffset: 0.5, face: 'bottom' },
+                { id: 'X501', x: 48, y: 72, w: 4, h: 2, footprint: 'crystal-2', desc: 'Secondary Crystal', zOffset: 0.6, face: 'bottom' },
+                { id: 'X1300', x: 22, y: 18, w: 4, h: 2, footprint: 'crystal-2', desc: 'RTC Crystal', zOffset: 0.7, face: 'bottom' },
+                { id: 'X1400', x: 88, y: 72, w: 3, h: 2, footprint: 'crystal-2', desc: 'WiFi/BT Crystal', zOffset: 0.8, face: 'bottom' },
+                { id: 'FB802', x: 52, y: 12, w: 2, h: 1, footprint: 'ferrite', desc: 'Ferrite Bead', zOffset: 0.9, face: 'bottom' },
+                { id: 'FB803', x: 52, y: 14, w: 2, h: 1, footprint: 'ferrite', desc: 'Ferrite Bead', zOffset: 1, face: 'bottom' }
+            ],
+            ics: [
+                { id: 'U1500', x: 30, y: 38, w: 24, h: 28, footprint: 'bga-large', desc: 'Allwinner A64 SoC', zOffset: 6, face: 'top' },
+                { id: 'U101', x: 75, y: 85, w: 4, h: 3, footprint: 'qfn-small', desc: 'AXP803 PMIC', zOffset: 6.5, face: 'top' },
+                { id: 'U1', x: 42, y: 52, w: 18, h: 22, footprint: 'bga-medium', desc: 'Baseband', zOffset: 6, face: 'bottom' },
+                { id: 'DU1', x: 42, y: 38, w: 14, h: 14, footprint: 'bga-medium', desc: 'LPDDR3 RAM', zOffset: 6.5, face: 'bottom' },
+                { id: 'U700', x: 8, y: 48, w: 10, h: 18, footprint: 'bga-small', desc: 'Modem LTE', zOffset: 7, face: 'bottom' },
+                { id: 'U600', x: 82, y: 35, w: 10, h: 16, footprint: 'qfn-large', desc: 'Audio Codec', zOffset: 7.5, face: 'bottom' },
+                { id: 'U1000', x: 68, y: 68, w: 8, h: 6, footprint: 'qfn-medium', desc: 'Touch Controller', zOffset: 8, face: 'bottom' },
+                { id: 'U1200', x: 8, y: 82, w: 8, h: 5, footprint: 'qfn-medium', desc: 'Voltage Reg 1.8V', zOffset: 8.2, face: 'bottom' },
+                { id: 'U1201', x: 12, y: 92, w: 4, h: 3, footprint: 'qfn-small', desc: 'Voltage Reg 3.3V', zOffset: 8.4, face: 'bottom' },
+                { id: 'U1202', x: 8, y: 72, w: 6, h: 5, footprint: 'qfn-small', desc: 'DC-DC Converter', zOffset: 8.6, face: 'bottom' },
+                { id: 'U1301', x: 8, y: 32, w: 5, h: 6, footprint: 'qfn-small', desc: 'LED Driver', zOffset: 8.8, face: 'bottom' },
+                { id: 'U1304', x: 18, y: 22, w: 6, h: 5, footprint: 'qfn-small', desc: 'Battery Charger', zOffset: 9, face: 'bottom' },
+                { id: 'U1305', x: 28, y: 12, w: 4, h: 3, footprint: 'qfn-small', desc: 'Overvoltage Prot', zOffset: 9.1, face: 'bottom' },
+                { id: 'U1308', x: 28, y: 8, w: 3, h: 2, footprint: 'qfn-small', desc: 'Temp Sensor', zOffset: 9.2, face: 'bottom' },
+                { id: 'U1400', x: 88, y: 62, w: 8, h: 8, footprint: 'qfn-medium', desc: 'WiFi/BT RTL8723CS', zOffset: 9.3, face: 'bottom' },
+                { id: 'U1502', x: 72, y: 45, w: 4, h: 3, footprint: 'qfn-small', desc: 'RF Amplifier', zOffset: 9.4, face: 'bottom' },
+                { id: 'U1503', x: 72, y: 52, w: 4, h: 3, footprint: 'qfn-small', desc: 'Antenna Switch', zOffset: 9.5, face: 'bottom' },
+                { id: 'U1504', x: 62, y: 18, w: 4, h: 3, footprint: 'qfn-small', desc: 'Audio Amp', zOffset: 9.6, face: 'bottom' },
+                { id: 'U1505', x: 78, y: 18, w: 3, h: 2, footprint: 'qfn-small', desc: 'Voltage Ref', zOffset: 9.7, face: 'bottom' },
+                { id: 'D1100', x: 38, y: 18, w: 2, h: 2, footprint: 'diode', desc: 'ESD Diode', zOffset: 9.8, face: 'bottom' },
+                { id: 'D1200', x: 62, y: 12, w: 2, h: 2, footprint: 'diode', desc: 'Schottky Diode', zOffset: 9.9, face: 'bottom' }
+            ],
+            antennas: [
+                { id: 'ANT1801', x: 5, y: 88, w: 8, h: 3, footprint: 'antenna', desc: 'Main LTE Antenna', zOffset: 7, face: 'top' },
+                { id: 'ANT1803', x: 5, y: 82, w: 7, h: 3, footprint: 'antenna', desc: 'MIMO Antenna', zOffset: 7.5, face: 'top' },
+                { id: 'ANT1400', x: 5, y: 76, w: 6, h: 3, footprint: 'antenna', desc: 'WiFi/BT Antenna', zOffset: 8, face: 'top' },
+                { id: 'ANT1500', x: 92, y: 88, w: 5, h: 3, footprint: 'antenna', desc: 'GPS Antenna', zOffset: 8.5, face: 'top' },
+                { id: 'ANT1502', x: 92, y: 82, w: 5, h: 3, footprint: 'antenna', desc: 'Diversity Antenna', zOffset: 9, face: 'top' }
+            ],
+            switches: [
+                { id: 'SW1', x: 82, y: 35, w: 6, h: 3, footprint: 'switch', desc: 'Kill Switch', zOffset: 9.5, face: 'top' }
+            ],
+            passives: [
+                // === TOP SIDE ===
+                { id: 'R1001', x: 42, y: 78, w: 1.5, h: 0.8, footprint: 'smd-0603', zOffset: 10, face: 'top' },
+                { id: 'R1002', x: 44, y: 78, w: 1.5, h: 0.8, footprint: 'smd-0603', zOffset: 10.2, face: 'top' },
+                { id: 'C310', x: 6, y: 65, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10.4, face: 'top' },
+                { id: 'C311', x: 6, y: 62, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10.6, face: 'top' },
+                { id: 'C900', x: 88, y: 15, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10.8, face: 'top' },
+                { id: 'C901', x: 88, y: 13, w: 1, h: 1, footprint: 'smd-0402', zOffset: 11, face: 'top' },
+                { id: 'L1900', x: 55, y: 70, w: 2, h: 2, footprint: 'smd-0805', zOffset: 11.2, face: 'top' },
+                // === BOTTOM SIDE - Condensateurs ===
+                { id: 'C411', x: 32, y: 48, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10, face: 'bottom' },
+                { id: 'C504', x: 28, y: 52, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10.1, face: 'bottom' },
+                { id: 'C505', x: 28, y: 50, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10.2, face: 'bottom' },
+                { id: 'C518', x: 58, y: 48, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10.3, face: 'bottom' },
+                { id: 'C522', x: 30, y: 55, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10.4, face: 'bottom' },
+                { id: 'C524', x: 32, y: 55, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10.5, face: 'bottom' },
+                { id: 'C545', x: 30, y: 45, w: 1.5, h: 1.5, footprint: 'smd-0603', zOffset: 10.6, face: 'bottom' },
+                { id: 'C547', x: 34, y: 50, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10.7, face: 'bottom' },
+                { id: 'C548', x: 30, y: 48, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10.8, face: 'bottom' },
+                { id: 'C600', x: 72, y: 38, w: 1, h: 1, footprint: 'smd-0402', zOffset: 10.9, face: 'bottom' },
+                { id: 'C601', x: 75, y: 28, w: 1, h: 1, footprint: 'smd-0402', zOffset: 11, face: 'bottom' },
+                { id: 'C602', x: 78, y: 22, w: 1, h: 1, footprint: 'smd-0402', zOffset: 11.1, face: 'bottom' },
+                { id: 'C603', x: 75, y: 42, w: 1, h: 1, footprint: 'smd-0402', zOffset: 11.2, face: 'bottom' },
+                { id: 'C604', x: 88, y: 48, w: 1, h: 1, footprint: 'smd-0402', zOffset: 11.3, face: 'bottom' },
+                { id: 'C605', x: 88, y: 45, w: 1, h: 1, footprint: 'smd-0402', zOffset: 11.4, face: 'bottom' },
+                { id: 'C610', x: 72, y: 25, w: 1, h: 1, footprint: 'smd-0402', zOffset: 11.5, face: 'bottom' },
+                { id: 'C612', x: 72, y: 22, w: 1, h: 1, footprint: 'smd-0402', zOffset: 11.6, face: 'bottom' },
+                { id: 'C616', x: 88, y: 28, w: 1, h: 1, footprint: 'smd-0402', zOffset: 11.7, face: 'bottom' },
+                { id: 'C618', x: 88, y: 38, w: 1, h: 1, footprint: 'smd-0402', zOffset: 11.8, face: 'bottom' },
+                { id: 'C622', x: 88, y: 42, w: 1, h: 1, footprint: 'smd-0402', zOffset: 11.9, face: 'bottom' },
+                { id: 'C627', x: 92, y: 52, w: 1, h: 1, footprint: 'smd-0402', zOffset: 12, face: 'bottom' },
+                { id: 'C628', x: 92, y: 55, w: 1, h: 1, footprint: 'smd-0402', zOffset: 12.1, face: 'bottom' },
+                { id: 'C629', x: 92, y: 50, w: 1, h: 1, footprint: 'smd-0402', zOffset: 12.2, face: 'bottom' },
+                { id: 'C630', x: 62, y: 42, w: 1, h: 1, footprint: 'smd-0402', zOffset: 12.3, face: 'bottom' },
+                { id: 'C633', x: 92, y: 25, w: 1, h: 1, footprint: 'smd-0402', zOffset: 12.4, face: 'bottom' },
+                { id: 'C635', x: 92, y: 28, w: 1, h: 1, footprint: 'smd-0402', zOffset: 12.5, face: 'bottom' },
+                { id: 'C638', x: 88, y: 32, w: 1, h: 1, footprint: 'smd-0402', zOffset: 12.6, face: 'bottom' },
+                { id: 'C642', x: 72, y: 28, w: 1, h: 1, footprint: 'smd-0402', zOffset: 12.7, face: 'bottom' },
+                { id: 'C644', x: 18, y: 38, w: 1, h: 1, footprint: 'smd-0402', zOffset: 12.8, face: 'bottom' },
+                { id: 'C645', x: 15, y: 42, w: 1.5, h: 1.5, footprint: 'smd-0603', zOffset: 12.9, face: 'bottom' },
+                { id: 'C646', x: 15, y: 45, w: 1, h: 1, footprint: 'smd-0402', zOffset: 13, face: 'bottom' },
+                { id: 'C806', x: 58, y: 35, w: 1, h: 1, footprint: 'smd-0402', zOffset: 13.1, face: 'bottom' },
+                { id: 'C807', x: 68, y: 38, w: 1, h: 1, footprint: 'smd-0402', zOffset: 13.2, face: 'bottom' },
+                { id: 'C808', x: 58, y: 32, w: 1, h: 1, footprint: 'smd-0402', zOffset: 13.3, face: 'bottom' },
+                { id: 'C810', x: 12, y: 68, w: 1, h: 1, footprint: 'smd-0402', zOffset: 13.4, face: 'bottom' },
+                { id: 'C811', x: 58, y: 42, w: 1, h: 1, footprint: 'smd-0402', zOffset: 13.5, face: 'bottom' },
+                { id: 'C813', x: 68, y: 35, w: 1, h: 1, footprint: 'smd-0402', zOffset: 13.6, face: 'bottom' },
+                { id: 'C816', x: 52, y: 15, w: 1, h: 1, footprint: 'smd-0402', zOffset: 13.7, face: 'bottom' },
+                { id: 'C818', x: 48, y: 15, w: 1, h: 1, footprint: 'smd-0402', zOffset: 13.8, face: 'bottom' },
+                { id: 'C820', x: 48, y: 18, w: 1, h: 1, footprint: 'smd-0402', zOffset: 13.9, face: 'bottom' },
+                { id: 'C1101', x: 35, y: 8, w: 1, h: 1, footprint: 'smd-0402', zOffset: 14, face: 'bottom' },
+                { id: 'C1102', x: 38, y: 8, w: 1, h: 1, footprint: 'smd-0402', zOffset: 14.1, face: 'bottom' },
+                { id: 'C1104', x: 35, y: 5, w: 1, h: 1, footprint: 'smd-0402', zOffset: 14.2, face: 'bottom' },
+                { id: 'C1105', x: 38, y: 5, w: 1, h: 1, footprint: 'smd-0402', zOffset: 14.3, face: 'bottom' },
+                { id: 'C1108', x: 28, y: 22, w: 1.5, h: 1.5, footprint: 'smd-0603', zOffset: 14.4, face: 'bottom' },
+                { id: 'C1302', x: 22, y: 42, w: 1, h: 1, footprint: 'smd-0402', zOffset: 14.5, face: 'bottom' },
+                { id: 'C1402', x: 82, y: 58, w: 1, h: 1, footprint: 'smd-0402', zOffset: 14.6, face: 'bottom' },
+                { id: 'C1416', x: 82, y: 55, w: 1, h: 1, footprint: 'smd-0402', zOffset: 14.7, face: 'bottom' },
+                { id: 'C1502', x: 75, y: 18, w: 1, h: 1, footprint: 'smd-0402', zOffset: 14.8, face: 'bottom' },
+                { id: 'C1505', x: 78, y: 15, w: 1, h: 1, footprint: 'smd-0402', zOffset: 14.9, face: 'bottom' },
+                { id: 'C1506', x: 78, y: 12, w: 1, h: 1, footprint: 'smd-0402', zOffset: 15, face: 'bottom' },
+                // === BOTTOM SIDE - Résistances ===
+                { id: 'R600', x: 78, y: 18, w: 1.2, h: 0.6, footprint: 'smd-0402', zOffset: 15.1, face: 'bottom' },
+                { id: 'R601', x: 75, y: 22, w: 1.2, h: 0.6, footprint: 'smd-0402', zOffset: 15.2, face: 'bottom' },
+                { id: 'R608', x: 88, y: 45, w: 1.2, h: 0.6, footprint: 'smd-0402', zOffset: 15.3, face: 'bottom' },
+                { id: 'R610', x: 92, y: 58, w: 1.2, h: 0.6, footprint: 'smd-0402', zOffset: 15.4, face: 'bottom' },
+                { id: 'R614', x: 15, y: 65, w: 1.2, h: 0.6, footprint: 'smd-0402', zOffset: 15.5, face: 'bottom' },
+                { id: 'R615', x: 15, y: 62, w: 1.2, h: 0.6, footprint: 'smd-0402', zOffset: 15.6, face: 'bottom' },
+                { id: 'R901', x: 28, y: 28, w: 1.2, h: 0.6, footprint: 'smd-0402', zOffset: 15.7, face: 'bottom' },
+                { id: 'R1004', x: 68, y: 72, w: 1.2, h: 0.6, footprint: 'smd-0402', zOffset: 15.8, face: 'bottom' },
+                { id: 'R1304', x: 15, y: 28, w: 1.2, h: 0.6, footprint: 'smd-0402', zOffset: 15.9, face: 'bottom' },
+                { id: 'R1317', x: 5, y: 18, w: 1.2, h: 0.6, footprint: 'smd-0402', zOffset: 16, face: 'bottom' },
+                { id: 'R1319', x: 15, y: 32, w: 1.2, h: 0.6, footprint: 'smd-0402', zOffset: 16.1, face: 'bottom' },
+                // === BOTTOM SIDE - Inductances ===
+                { id: 'L600', x: 72, y: 42, w: 2, h: 2, footprint: 'smd-0805', zOffset: 16.2, face: 'bottom' },
+                { id: 'L601', x: 68, y: 32, w: 1.5, h: 1.5, footprint: 'smd-0603', zOffset: 16.3, face: 'bottom' },
+                { id: 'L602', x: 62, y: 38, w: 1.5, h: 1.5, footprint: 'smd-0603', zOffset: 16.4, face: 'bottom' },
+                { id: 'L603', x: 78, y: 28, w: 1.5, h: 1.5, footprint: 'smd-0603', zOffset: 16.5, face: 'bottom' },
+                { id: 'L604', x: 85, y: 32, w: 1.5, h: 1.5, footprint: 'smd-0603', zOffset: 16.6, face: 'bottom' },
+                { id: 'L605', x: 85, y: 35, w: 1.5, h: 1.5, footprint: 'smd-0603', zOffset: 16.7, face: 'bottom' },
+                { id: 'L606', x: 18, y: 42, w: 1.5, h: 1.5, footprint: 'smd-0603', zOffset: 16.8, face: 'bottom' },
+                { id: 'L1100', x: 42, y: 15, w: 2, h: 2, footprint: 'smd-0805', zOffset: 16.9, face: 'bottom' },
+                { id: 'L1300', x: 5, y: 12, w: 2, h: 2, footprint: 'smd-0805', zOffset: 17, face: 'bottom' }
+            ],
+            shields: [
+                { id: 'S2', x: 8, y: 35, w: 4, h: 25, footprint: 'shield', desc: 'Blindage RF', zOffset: 11.5, face: 'top' }
+            ]
+        };
+
+        // ============================================
+        // GLOBAL VARIABLES
+        // ============================================
+        
+        let scene, camera, renderer;
+        let raycaster, mouse;
+        let componentMeshes = [];
+        let padMeshes = [];
+        let footprintGroups = [];
+        let mainGroup;
+        let showPads = true;
+        
+        // State
+        let deployProgress = 0;
+        
+        // Lightning animation
+        let lightningBolts = [];
+        let isSnapping = false;
+        let snapAnimations = [];
+        
+        // Camera and interaction state
+        let spherical = { theta: 0, phi: Math.PI / 4, radius: 140 };
+        let target = new THREE.Vector3(0, 0, 0);
+        let isRotating = false;
+        let lastX = 0, lastY = 0;
+        
+        // Component manipulation state
+        let isDraggingComponent = false;
+        let draggedComponent = null;
+        let dragPlane = null;
+        let dragOffset = new THREE.Vector3();
+        let hoveredForScroll = null;
+        let isScrollbarDragging = false;
+        let activeScrollbar = null;
+        let scrollStartY = 0;
+        let scrollStartX = 0;
+        let componentOriginalStates = new Map();
+        let componentFootprints = new Map(); // Maps component ID to footprint data
+        let padsByFootprint = new Map(); // Maps footprint position key to pad mesh
+        
+        // Scrollbar stability
+        let hideScrollbarTimer = null;
+        let scrollbarLocked = false;
+        
+        // Compatibility state
+        let currentCompatibility = null; // 'compatible', 'incompatible', 'floating'
+        let nearestPad = null;
+        
+        // Stats
+        let stats = {
+            components: 0,
+            footprints: 0,
+            pads: 0,
+            connected: 0
+        };
+        
+        // DOM Elements
+        const componentScrollbars = document.getElementById('componentScrollbars');
+        const scrollbarV = document.getElementById('scrollbarV');
+        const scrollbarH = document.getElementById('scrollbarH');
+        const thumbV = document.getElementById('thumbV');
+        const thumbH = document.getElementById('thumbH');
+        const floatingInfo = document.getElementById('floatingInfo');
+        const floatingName = document.getElementById('floatingName');
+        const compatibilityStatus = document.getElementById('compatibilityStatus');
+        const hoverInfo = document.getElementById('hoverInfo');
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        function init() {
+            updateLoading(10, 'Création de la scène...');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+            
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 80, 120);
+            camera.lookAt(0, 0, 0);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            dragPlane = new THREE.Plane();
+            
+            mainGroup = new THREE.Group();
+            scene.add(mainGroup);
+            
+            updateLoading(20, 'Configuration des lumières...');
+            setupLights();
+            
+            updateLoading(30, 'Création du PCB...');
+            createPCB();
+            
+            updateLoading(50, 'Création des footprints/pads...');
+            createAllFootprints();
+            
+            updateLoading(70, 'Placement des composants...');
+            createComponents();
+            
+            updateLoading(90, 'Configuration des contrôles...');
+            setupControls();
+            
+            updateLoading(100, 'Prêt !');
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('hidden');
+            }, 500);
+            
+            // Update stats
+            document.getElementById('component-count').textContent = stats.components;
+            document.getElementById('footprint-count').textContent = stats.footprints;
+            document.getElementById('pad-count').textContent = stats.pads;
+            document.getElementById('connected-count').textContent = stats.connected;
+            
+            animate();
+        }
+        
+        function updateLoading(percent, text) {
+            document.getElementById('loader-bar').style.width = percent + '%';
+            document.getElementById('loading-text').textContent = text;
+        }
+
+        // ============================================
+        // LIGHTS
+        // ============================================
+        
+        function setupLights() {
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+            
+            const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+            directional.position.set(50, 100, 50);
+            directional.castShadow = true;
+            scene.add(directional);
+            
+            const fill = new THREE.DirectionalLight(0x88aaff, 0.3);
+            fill.position.set(-50, 50, -50);
+            scene.add(fill);
+        }
+
+        // ============================================
+        // PCB CREATION
+        // ============================================
+        
+        function createPCB() {
+            const pcbGroup = new THREE.Group();
+            
+            // Main board
+            const boardGeo = new THREE.BoxGeometry(BOARD_WIDTH, BOARD_THICKNESS, BOARD_HEIGHT);
+            const boardMat = new THREE.MeshStandardMaterial({
+                color: COLORS.pcb,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            const board = new THREE.Mesh(boardGeo, boardMat);
+            board.receiveShadow = true;
+            pcbGroup.add(board);
+            
+            // Copper layer (top)
+            const copperGeo = new THREE.PlaneGeometry(BOARD_WIDTH - 2, BOARD_HEIGHT - 2);
+            const copperMat = new THREE.MeshStandardMaterial({
+                color: COLORS.copper,
+                roughness: 0.4,
+                metalness: 0.6,
+                transparent: true,
+                opacity: 0.3
+            });
+            const copperTop = new THREE.Mesh(copperGeo, copperMat);
+            copperTop.rotation.x = -Math.PI / 2;
+            copperTop.position.y = BOARD_THICKNESS / 2 + 0.01;
+            pcbGroup.add(copperTop);
+            
+            // Copper layer (bottom)
+            const copperBottom = new THREE.Mesh(copperGeo, copperMat.clone());
+            copperBottom.rotation.x = Math.PI / 2;
+            copperBottom.position.y = -BOARD_THICKNESS / 2 - 0.01;
+            pcbGroup.add(copperBottom);
+            
+            mainGroup.add(pcbGroup);
+        }
+
+        // ============================================
+        // FOOTPRINT/PAD CREATION
+        // ============================================
+        
+        function createAllFootprints() {
+            const allComponents = [
+                ...COMPONENTS_DATA.connectors,
+                ...COMPONENTS_DATA.ics,
+                ...COMPONENTS_DATA.antennas,
+                ...COMPONENTS_DATA.switches,
+                ...COMPONENTS_DATA.passives,
+                ...COMPONENTS_DATA.shields
+            ];
+            
+            allComponents.forEach(comp => {
+                createFootprintPads(comp);
+                stats.footprints++;
+            });
+        }
+        
+        function createFootprintPads(component) {
+            const footprintType = FOOTPRINT_TYPES[component.footprint];
+            if (!footprintType) return;
+            
+            const footprintGroup = new THREE.Group();
+            const isBottom = component.face === 'bottom';
+            const yOffset = isBottom ? -BOARD_THICKNESS / 2 - 0.02 : BOARD_THICKNESS / 2 + 0.02;
+            
+            // Convert percentage position to world coordinates
+            const worldX = (component.x / 100 - 0.5) * BOARD_WIDTH;
+            const worldZ = (component.y / 100 - 0.5) * BOARD_HEIGHT;
+            
+            const pads = [];
+            
+            switch (footprintType.type) {
+                case 'grid': // BGA
+                    createGridPads(footprintGroup, footprintType, component, pads);
+                    break;
+                case 'peripheral': // QFN
+                    createPeripheralPads(footprintGroup, footprintType, component, pads);
+                    break;
+                case 'linear': // FPC
+                    createLinearPads(footprintGroup, footprintType, component, pads);
+                    break;
+                case 'two-terminal': // Passives
+                    createTwoTerminalPads(footprintGroup, footprintType, component, pads);
+                    break;
+                case 'crystal':
+                    createCrystalPads(footprintGroup, footprintType, component, pads);
+                    break;
+                case 'usb':
+                    createUSBPads(footprintGroup, footprintType, component, pads);
+                    break;
+                case 'coax':
+                    createCoaxPad(footprintGroup, footprintType, component, pads);
+                    break;
+                case 'switch':
+                    createSwitchPads(footprintGroup, footprintType, component, pads);
+                    break;
+                case 'btb':
+                case 'sim':
+                case 'audio':
+                case 'through-hole':
+                case 'shield':
+                    createGenericPads(footprintGroup, footprintType, component, pads);
+                    break;
+            }
+            
+            footprintGroup.position.set(worldX, yOffset, worldZ);
+            if (isBottom) {
+                footprintGroup.rotation.x = Math.PI;
+            }
+            
+            footprintGroup.userData = {
+                id: component.id,
+                footprint: component.footprint,
+                face: component.face,
+                originalComponentId: component.id
+            };
+            
+            // Store footprint mapping
+            const posKey = `${component.x}-${component.y}-${component.face}`;
+            padsByFootprint.set(posKey, {
+                group: footprintGroup,
+                footprint: component.footprint,
+                componentId: component.id,
+                pads: pads,
+                occupied: true // Initially occupied by its component
+            });
+            
+            componentFootprints.set(component.id, {
+                footprint: component.footprint,
+                posKey: posKey,
+                originalX: component.x,
+                originalY: component.y,
+                face: component.face
+            });
+            
+            mainGroup.add(footprintGroup);
+            footprintGroups.push(footprintGroup);
+        }
+        
+        function createPadMaterial(connected = true) {
+            return new THREE.MeshStandardMaterial({
+                color: connected ? COLORS.padConnected : COLORS.pad,
+                roughness: 0.3,
+                metalness: 0.8,
+                emissive: connected ? 0x004422 : 0x000000,
+                emissiveIntensity: connected ? 0.3 : 0
+            });
+        }
+        
+        function createGridPads(group, footprintType, component, pads) {
+            const { rows, cols, pitch, padSize } = footprintType;
+            const padGeo = new THREE.CylinderGeometry(padSize / 2, padSize / 2, 0.1, 8);
+            
+            const startX = -((cols - 1) * pitch) / 2;
+            const startZ = -((rows - 1) * pitch) / 2;
+            
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const pad = new THREE.Mesh(padGeo, createPadMaterial());
+                    pad.position.set(startX + c * pitch, 0, startZ + r * pitch);
+                    pad.rotation.x = Math.PI / 2;
+                    group.add(pad);
+                    pads.push(pad);
+                    padMeshes.push(pad);
+                    stats.pads++;
+                }
+            }
+        }
+        
+        function createPeripheralPads(group, footprintType, component, pads) {
+            const { pinsPerSide, pitch, padSize } = footprintType;
+            const padGeo = new THREE.BoxGeometry(padSize, 0.1, padSize * 1.5);
+            
+            const halfLength = ((pinsPerSide - 1) * pitch) / 2;
+            const offset = component.w / 100 * BOARD_WIDTH / 2.5;
+            
+            // 4 sides
+            for (let side = 0; side < 4; side++) {
+                for (let i = 0; i < pinsPerSide; i++) {
+                    const pad = new THREE.Mesh(padGeo, createPadMaterial());
+                    const pos = -halfLength + i * pitch;
+                    
+                    switch (side) {
+                        case 0: // Top
+                            pad.position.set(pos, 0, -offset);
+                            break;
+                        case 1: // Right
+                            pad.position.set(offset, 0, pos);
+                            pad.rotation.y = Math.PI / 2;
+                            break;
+                        case 2: // Bottom
+                            pad.position.set(pos, 0, offset);
+                            break;
+                        case 3: // Left
+                            pad.position.set(-offset, 0, pos);
+                            pad.rotation.y = Math.PI / 2;
+                            break;
+                    }
+                    
+                    group.add(pad);
+                    pads.push(pad);
+                    padMeshes.push(pad);
+                    stats.pads++;
+                }
+            }
+        }
+        
+        function createLinearPads(group, footprintType, component, pads) {
+            const { pins, pitch, padSize } = footprintType;
+            const padGeo = new THREE.BoxGeometry(padSize, 0.1, padSize * 2);
+            
+            const startX = -((pins - 1) * pitch) / 2;
+            
+            for (let i = 0; i < pins; i++) {
+                const pad = new THREE.Mesh(padGeo, createPadMaterial());
+                pad.position.set(startX + i * pitch, 0, 0);
+                group.add(pad);
+                pads.push(pad);
+                padMeshes.push(pad);
+                stats.pads++;
+            }
+        }
+        
+        function createTwoTerminalPads(group, footprintType, component, pads) {
+            const { padSize, spacing } = footprintType;
+            const padGeo = new THREE.BoxGeometry(padSize, 0.1, padSize);
+            
+            [-1, 1].forEach(dir => {
+                const pad = new THREE.Mesh(padGeo, createPadMaterial());
+                pad.position.set(dir * spacing / 2, 0, 0);
+                group.add(pad);
+                pads.push(pad);
+                padMeshes.push(pad);
+                stats.pads++;
+            });
+        }
+        
+        function createCrystalPads(group, footprintType, component, pads) {
+            const { pins, padSize } = footprintType;
+            const padGeo = new THREE.CylinderGeometry(padSize / 2, padSize / 2, 0.1, 8);
+            
+            if (pins === 4) {
+                [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([x, z]) => {
+                    const pad = new THREE.Mesh(padGeo, createPadMaterial());
+                    pad.position.set(x * 1, 0, z * 0.8);
+                    pad.rotation.x = Math.PI / 2;
+                    group.add(pad);
+                    pads.push(pad);
+                    padMeshes.push(pad);
+                    stats.pads++;
+                });
+            } else {
+                [-1, 1].forEach(dir => {
+                    const pad = new THREE.Mesh(padGeo, createPadMaterial());
+                    pad.position.set(dir * 0.8, 0, 0);
+                    pad.rotation.x = Math.PI / 2;
+                    group.add(pad);
+                    pads.push(pad);
+                    padMeshes.push(pad);
+                    stats.pads++;
+                });
+            }
+        }
+        
+        function createUSBPads(group, footprintType, component, pads) {
+            const padGeo = new THREE.BoxGeometry(0.25, 0.1, 0.5);
+            
+            // 12 pins on each row
+            for (let row = 0; row < 2; row++) {
+                for (let i = 0; i < 12; i++) {
+                    const pad = new THREE.Mesh(padGeo, createPadMaterial());
+                    pad.position.set(-2.75 + i * 0.5, 0, (row - 0.5) * 1.5);
+                    group.add(pad);
+                    pads.push(pad);
+                    padMeshes.push(pad);
+                    stats.pads++;
+                }
+            }
+        }
+        
+        function createCoaxPad(group, footprintType, component, pads) {
+            // Central pad
+            const centerGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
+            const centerPad = new THREE.Mesh(centerGeo, createPadMaterial());
+            centerPad.rotation.x = Math.PI / 2;
+            group.add(centerPad);
+            pads.push(centerPad);
+            padMeshes.push(centerPad);
+            stats.pads++;
+            
+            // Ground ring
+            const ringGeo = new THREE.RingGeometry(0.6, 0.8, 16);
+            const ringMat = createPadMaterial();
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.05;
+            group.add(ring);
+            pads.push(ring);
+            padMeshes.push(ring);
+            stats.pads++;
+        }
+        
+        function createSwitchPads(group, footprintType, component, pads) {
+            const { pins, pitch, padSize } = footprintType;
+            const padGeo = new THREE.CylinderGeometry(padSize / 2, padSize / 2, 0.1, 8);
+            
+            const rows = 2;
+            const cols = pins / 2;
+            
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const pad = new THREE.Mesh(padGeo, createPadMaterial());
+                    pad.position.set((c - (cols - 1) / 2) * pitch, 0, (r - 0.5) * pitch);
+                    pad.rotation.x = Math.PI / 2;
+                    group.add(pad);
+                    pads.push(pad);
+                    padMeshes.push(pad);
+                    stats.pads++;
+                }
+            }
+        }
+        
+        function createGenericPads(group, footprintType, component, pads) {
+            const pins = footprintType.pins || 8;
+            const pitch = footprintType.pitch || 0.5;
+            const padSize = footprintType.padSize || 0.3;
+            const padGeo = new THREE.BoxGeometry(padSize, 0.1, padSize);
+            
+            const cols = Math.ceil(Math.sqrt(pins));
+            const rows = Math.ceil(pins / cols);
+            
+            let pinCount = 0;
+            for (let r = 0; r < rows && pinCount < pins; r++) {
+                for (let c = 0; c < cols && pinCount < pins; c++) {
+                    const pad = new THREE.Mesh(padGeo, createPadMaterial());
+                    pad.position.set(
+                        (c - (cols - 1) / 2) * pitch,
+                        0,
+                        (r - (rows - 1) / 2) * pitch
+                    );
+                    group.add(pad);
+                    pads.push(pad);
+                    padMeshes.push(pad);
+                    stats.pads++;
+                    pinCount++;
+                }
+            }
+        }
+
+        // ============================================
+        // COMPONENT CREATION
+        // ============================================
+        
+        function createComponents() {
+            COMPONENTS_DATA.connectors.forEach(data => {
+                const mesh = createConnector(data);
+                componentMeshes.push(mesh);
+                mainGroup.add(mesh);
+                stats.components++;
+                stats.connected++;
+            });
+            
+            COMPONENTS_DATA.ics.forEach(data => {
+                const mesh = createIC(data);
+                componentMeshes.push(mesh);
+                mainGroup.add(mesh);
+                stats.components++;
+                stats.connected++;
+            });
+            
+            COMPONENTS_DATA.antennas.forEach(data => {
+                const mesh = createAntenna(data);
+                componentMeshes.push(mesh);
+                mainGroup.add(mesh);
+                stats.components++;
+                stats.connected++;
+            });
+            
+            COMPONENTS_DATA.switches.forEach(data => {
+                const mesh = createSwitch(data);
+                componentMeshes.push(mesh);
+                mainGroup.add(mesh);
+                stats.components++;
+                stats.connected++;
+            });
+            
+            COMPONENTS_DATA.passives.forEach(data => {
+                const mesh = createPassive(data);
+                componentMeshes.push(mesh);
+                mainGroup.add(mesh);
+                stats.components++;
+                stats.connected++;
+            });
+            
+            COMPONENTS_DATA.shields.forEach(data => {
+                const mesh = createShield(data);
+                componentMeshes.push(mesh);
+                mainGroup.add(mesh);
+                stats.components++;
+                stats.connected++;
+            });
+        }
+        
+        function createConnector(data) {
+            const group = new THREE.Group();
+            const isBottom = data.face === 'bottom';
+            const yMultiplier = isBottom ? -1 : 1;
+            
+            const width = data.w / 100 * BOARD_WIDTH;
+            const depth = data.h / 100 * BOARD_HEIGHT;
+            let height = 1.5;
+            
+            if (data.footprint === 'usb-c') height = 3;
+            else if (data.footprint.includes('crystal')) height = 0.5;
+            else if (data.footprint === 'ferrite') height = 0.3;
+            
+            // Body
+            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: data.footprint.includes('crystal') ? 0x888888 : 0x2a2a2a,
+                roughness: 0.6,
+                metalness: 0.2
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = yMultiplier * (BOARD_THICKNESS / 2 + height / 2);
+            group.add(body);
+            
+            // Position
+            const worldX = (data.x / 100 - 0.5) * BOARD_WIDTH;
+            const worldZ = (data.y / 100 - 0.5) * BOARD_HEIGHT;
+            group.position.set(worldX, 0, worldZ);
+            
+            group.userData = {
+                id: data.id,
+                desc: data.desc,
+                footprint: data.footprint,
+                face: data.face,
+                zOffset: data.zOffset,
+                type: 'connector',
+                originalPosition: new THREE.Vector3(worldX, 0, worldZ),
+                isConnected: true
+            };
+            
+            return group;
+        }
+        
+        function createIC(data) {
+            const group = new THREE.Group();
+            const isBottom = data.face === 'bottom';
+            const yMultiplier = isBottom ? -1 : 1;
+            
+            const width = data.w / 100 * BOARD_WIDTH;
+            const depth = data.h / 100 * BOARD_HEIGHT;
+            let height = 0.8;
+            
+            if (data.footprint === 'bga-large') height = 1.5;
+            else if (data.footprint === 'bga-medium') height = 1.2;
+            else if (data.footprint === 'diode') height = 0.4;
+            
+            // Body
+            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: data.id === 'DU1' ? 0x1a1a2a : 0x2a2a2a,
+                roughness: 0.4,
+                metalness: 0.3
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = yMultiplier * (BOARD_THICKNESS / 2 + height / 2);
+            group.add(body);
+            
+            // Orientation dot
+            const dotGeo = new THREE.CircleGeometry(Math.min(width, depth) * 0.08, 16);
+            const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const dot = new THREE.Mesh(dotGeo, dotMat);
+            dot.rotation.x = yMultiplier * -Math.PI / 2;
+            dot.position.set(-width * 0.35, yMultiplier * (BOARD_THICKNESS / 2 + height + 0.01), -depth * 0.35);
+            group.add(dot);
+            
+            // Position
+            const worldX = (data.x / 100 - 0.5) * BOARD_WIDTH;
+            const worldZ = (data.y / 100 - 0.5) * BOARD_HEIGHT;
+            group.position.set(worldX, 0, worldZ);
+            
+            group.userData = {
+                id: data.id,
+                desc: data.desc,
+                footprint: data.footprint,
+                face: data.face,
+                zOffset: data.zOffset,
+                type: 'ic',
+                originalPosition: new THREE.Vector3(worldX, 0, worldZ),
+                isConnected: true
+            };
+            
+            return group;
+        }
+        
+        function createAntenna(data) {
+            const group = new THREE.Group();
+            const isBottom = data.face === 'bottom';
+            const yMultiplier = isBottom ? -1 : 1;
+            
+            const width = data.w / 100 * BOARD_WIDTH;
+            const depth = data.h / 100 * BOARD_HEIGHT;
+            const height = 0.5;
+            
+            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: 0x8b4513,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = yMultiplier * (BOARD_THICKNESS / 2 + height / 2);
+            group.add(body);
+            
+            const worldX = (data.x / 100 - 0.5) * BOARD_WIDTH;
+            const worldZ = (data.y / 100 - 0.5) * BOARD_HEIGHT;
+            group.position.set(worldX, 0, worldZ);
+            
+            group.userData = {
+                id: data.id,
+                desc: data.desc,
+                footprint: data.footprint,
+                face: data.face,
+                zOffset: data.zOffset,
+                type: 'antenna',
+                originalPosition: new THREE.Vector3(worldX, 0, worldZ),
+                isConnected: true
+            };
+            
+            return group;
+        }
+        
+        function createSwitch(data) {
+            const group = new THREE.Group();
+            const isBottom = data.face === 'bottom';
+            const yMultiplier = isBottom ? -1 : 1;
+            
+            const width = data.w / 100 * BOARD_WIDTH;
+            const depth = data.h / 100 * BOARD_HEIGHT;
+            const height = 1;
+            
+            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: 0x444444,
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = yMultiplier * (BOARD_THICKNESS / 2 + height / 2);
+            group.add(body);
+            
+            const worldX = (data.x / 100 - 0.5) * BOARD_WIDTH;
+            const worldZ = (data.y / 100 - 0.5) * BOARD_HEIGHT;
+            group.position.set(worldX, 0, worldZ);
+            
+            group.userData = {
+                id: data.id,
+                desc: data.desc,
+                footprint: data.footprint,
+                face: data.face,
+                zOffset: data.zOffset,
+                type: 'switch',
+                originalPosition: new THREE.Vector3(worldX, 0, worldZ),
+                isConnected: true
+            };
+            
+            return group;
+        }
+        
+        function createPassive(data) {
+            const group = new THREE.Group();
+            const isBottom = data.face === 'bottom';
+            const yMultiplier = isBottom ? -1 : 1;
+            
+            const width = data.w / 100 * BOARD_WIDTH;
+            const depth = data.h / 100 * BOARD_HEIGHT;
+            const height = 0.3;
+            
+            const bodyGeo = new THREE.BoxGeometry(width, height, depth);
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: data.id.startsWith('R') ? 0x1a1a1a : 0x4a3c2a,
+                roughness: 0.5,
+                metalness: 0.2
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = yMultiplier * (BOARD_THICKNESS / 2 + height / 2);
+            group.add(body);
+            
+            const worldX = (data.x / 100 - 0.5) * BOARD_WIDTH;
+            const worldZ = (data.y / 100 - 0.5) * BOARD_HEIGHT;
+            group.position.set(worldX, 0, worldZ);
+            
+            group.userData = {
+                id: data.id,
+                footprint: data.footprint,
+                face: data.face,
+                zOffset: data.zOffset,
+                type: 'passive',
+                originalPosition: new THREE.Vector3(worldX, 0, worldZ),
+                isConnected: true
+            };
+            
+            return group;
+        }
+        
+        function createShield(data) {
+            const group = new THREE.Group();
+            const isBottom = data.face === 'bottom';
+            const yMultiplier = isBottom ? -1 : 1;
+            
+            const width = data.w / 100 * BOARD_WIDTH;
+            const depth = data.h / 100 * BOARD_HEIGHT;
+            const height = 2;
+            
+            // Shield frame (hollow box)
+            const frameGeo = new THREE.BoxGeometry(width, height, depth);
+            const frameMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 0.3,
+                metalness: 0.8
+            });
+            const frame = new THREE.Mesh(frameGeo, frameMat);
+            frame.position.y = yMultiplier * (BOARD_THICKNESS / 2 + height / 2);
+            group.add(frame);
+            
+            // Metal top
+            const topGeo = new THREE.PlaneGeometry(width - 0.5, depth - 0.5);
+            const topMat = new THREE.MeshStandardMaterial({
+                color: 0xc0c0c0,
+                roughness: 0.4,
+                metalness: 0.7
+            });
+            const top = new THREE.Mesh(topGeo, topMat);
+            top.rotation.x = -Math.PI / 2;
+            top.position.y = yMultiplier * (BOARD_THICKNESS / 2 + height + 0.01);
+            group.add(top);
+            
+            const worldX = (data.x / 100 - 0.5) * BOARD_WIDTH;
+            const worldZ = (data.y / 100 - 0.5) * BOARD_HEIGHT;
+            group.position.set(worldX, 0, worldZ);
+            
+            group.userData = {
+                id: data.id,
+                desc: data.desc,
+                footprint: data.footprint,
+                face: data.face,
+                zOffset: data.zOffset,
+                type: 'shield',
+                originalPosition: new THREE.Vector3(worldX, 0, worldZ),
+                isConnected: true
+            };
+            
+            return group;
+        }
+
+        // ============================================
+        // COMPATIBILITY CHECKING
+        // ============================================
+        
+        function checkCompatibility(component, position) {
+            if (!component || !component.userData) return { status: 'floating', nearestPad: null };
+            
+            const compFootprint = component.userData.footprint;
+            const compFace = component.userData.face;
+            
+            // Find nearest footprint pad group
+            let nearestFootprint = null;
+            let minDistance = Infinity;
+            
+            padsByFootprint.forEach((padData, posKey) => {
+                const fpGroup = padData.group;
+                const distance = position.distanceTo(fpGroup.position);
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestFootprint = padData;
+                }
+            });
+            
+            // Check if within snap range
+            const snapRange = 5; // units
+            if (minDistance > snapRange) {
+                return { status: 'floating', nearestPad: null };
+            }
+            
+            // Check if footprints are compatible
+            if (nearestFootprint.footprint === compFootprint && nearestFootprint.group.userData.face === compFace) {
+                return { status: 'compatible', nearestPad: nearestFootprint };
+            } else {
+                return { status: 'incompatible', nearestPad: nearestFootprint };
+            }
+        }
+        
+        function updateCompatibilityVisuals(status, component, nearestPad) {
+            // Update status display
+            compatibilityStatus.className = 'compatibility-status';
+            
+            if (status === 'compatible') {
+                compatibilityStatus.classList.add('compatible');
+                compatibilityStatus.textContent = 'COMPATIBLE';
+                
+                // Highlight component cyan
+                if (component) {
+                    component.traverse(child => {
+                        if (child.material) {
+                            child.material.emissive = new THREE.Color(0x00ffff);
+                            child.material.emissiveIntensity = 0.3;
+                        }
+                    });
+                }
+                
+                // Highlight pad cyan
+                if (nearestPad) {
+                    nearestPad.pads.forEach(pad => {
+                        if (pad.material) {
+                            pad.material.color.setHex(COLORS.padHighlight);
+                            pad.material.emissive = new THREE.Color(0x00ffff);
+                            pad.material.emissiveIntensity = 0.5;
+                        }
+                    });
+                }
+            } else if (status === 'incompatible') {
+                compatibilityStatus.classList.add('incompatible');
+                compatibilityStatus.textContent = 'INCOMPATIBLE';
+                
+                // Highlight component red
+                if (component) {
+                    component.traverse(child => {
+                        if (child.material) {
+                            child.material.emissive = new THREE.Color(0xff3333);
+                            child.material.emissiveIntensity = 0.5;
+                        }
+                    });
+                }
+                
+                // Highlight pad red
+                if (nearestPad) {
+                    nearestPad.pads.forEach(pad => {
+                        if (pad.material) {
+                            pad.material.color.setHex(COLORS.padIncompatible);
+                            pad.material.emissive = new THREE.Color(0xff3333);
+                            pad.material.emissiveIntensity = 0.5;
+                        }
+                    });
+                }
+            } else { // floating
+                compatibilityStatus.classList.add('floating');
+                compatibilityStatus.textContent = 'FLOTTANT';
+                
+                // Highlight component orange
+                if (component) {
+                    component.traverse(child => {
+                        if (child.material) {
+                            child.material.emissive = new THREE.Color(0xff9933);
+                            child.material.emissiveIntensity = 0.3;
+                        }
+                    });
+                }
+            }
+        }
+        
+        function clearCompatibilityVisuals() {
+            compatibilityStatus.className = 'compatibility-status';
+            
+            // Reset all component materials
+            componentMeshes.forEach(comp => {
+                comp.traverse(child => {
+                    if (child.material) {
+                        child.material.emissive = new THREE.Color(0x000000);
+                        child.material.emissiveIntensity = 0;
+                    }
+                });
+            });
+            
+            // Reset all pad materials
+            padsByFootprint.forEach(padData => {
+                padData.pads.forEach(pad => {
+                    if (pad.material) {
+                        pad.material.color.setHex(padData.occupied ? COLORS.padConnected : COLORS.pad);
+                        pad.material.emissive = new THREE.Color(padData.occupied ? 0x004422 : 0x000000);
+                        pad.material.emissiveIntensity = padData.occupied ? 0.3 : 0;
+                    }
+                });
+            });
+        }
+        
+        function snapToFootprint(component, footprintData) {
+            if (!component || !footprintData || isSnapping) return;
+            
+            isSnapping = true;
+            
+            const startPos = component.position.clone();
+            const targetPos = footprintData.group.position.clone();
+            targetPos.y = 0;
+            
+            // Lift component up first for dramatic effect
+            const liftHeight = 15;
+            const liftedPos = startPos.clone();
+            liftedPos.y = liftHeight;
+            
+            const duration = 800; // ms
+            const startTime = performance.now();
+            
+            // Create lightning bolts
+            const bolts = createLightningBolts(component, footprintData);
+            
+            function animateSnap(currentTime) {
+                const elapsed = currentTime - startTime;
+                let progress = Math.min(elapsed / duration, 1);
+                
+                // Custom easing: slow start, fast end (ease-in cubic)
+                // First 60%: slow descent, Last 40%: rapid acceleration
+                let easedProgress;
+                if (progress < 0.6) {
+                    // Slow phase (ease-out)
+                    const p = progress / 0.6;
+                    easedProgress = 0.3 * (1 - Math.pow(1 - p, 2));
+                } else {
+                    // Fast phase (ease-in with acceleration)
+                    const p = (progress - 0.6) / 0.4;
+                    easedProgress = 0.3 + 0.7 * Math.pow(p, 3);
+                }
+                
+                // Interpolate position
+                const currentPos = new THREE.Vector3();
+                
+                // X and Z move linearly
+                currentPos.x = startPos.x + (targetPos.x - startPos.x) * easedProgress;
+                currentPos.z = startPos.z + (targetPos.z - startPos.z) * easedProgress;
+                
+                // Y follows arc then drops
+                if (progress < 0.3) {
+                    // Lift phase
+                    const liftProgress = progress / 0.3;
+                    currentPos.y = startPos.y + (liftHeight - startPos.y) * (1 - Math.pow(1 - liftProgress, 2));
+                } else {
+                    // Descend phase
+                    const descendProgress = (progress - 0.3) / 0.7;
+                    // Slow then fast descent
+                    let descendEase;
+                    if (descendProgress < 0.5) {
+                        descendEase = 0.2 * Math.pow(descendProgress / 0.5, 0.5);
+                    } else {
+                        descendEase = 0.2 + 0.8 * Math.pow((descendProgress - 0.5) / 0.5, 2.5);
+                    }
+                    currentPos.y = liftHeight + (targetPos.y - liftHeight) * descendEase;
+                }
+                
+                component.position.copy(currentPos);
+                
+                // Update lightning bolts
+                updateLightningBolts(bolts, component, footprintData, progress);
+                
+                // Add glow effect as it gets closer
+                if (progress > 0.7) {
+                    const glowIntensity = (progress - 0.7) / 0.3;
+                    component.traverse(child => {
+                        if (child.isMesh && child.material) {
+                            child.material.emissive = new THREE.Color(0x00ffff);
+                            child.material.emissiveIntensity = glowIntensity * 0.5;
+                        }
+                    });
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateSnap);
+                } else {
+                    // Animation complete
+                    component.position.copy(targetPos);
+                    component.rotation.set(0, 0, 0);
+                    
+                    // Flash effect on landing
+                    createLandingFlash(component, footprintData);
+                    
+                    // Remove lightning bolts
+                    removeLightningBolts(bolts);
+                    
+                    // Reset glow
+                    component.traverse(child => {
+                        if (child.isMesh && child.material) {
+                            child.material.emissiveIntensity = 0;
+                        }
+                    });
+                    
+                    // Update connection state
+                    component.userData.isConnected = true;
+                    footprintData.occupied = true;
+                    
+                    // Update stats
+                    updateConnectionStats();
+                    
+                    isSnapping = false;
+                }
+            }
+            
+            requestAnimationFrame(animateSnap);
+        }
+        
+        function createLightningBolts(component, footprintData) {
+            const bolts = [];
+            const numBolts = 6; // Plus d'éclairs
+            
+            for (let i = 0; i < numBolts; i++) {
+                const points = [];
+                for (let j = 0; j < 12; j++) { // Plus de points pour des éclairs plus détaillés
+                    points.push(new THREE.Vector3(0, 0, 0));
+                }
+                
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const material = new THREE.LineBasicMaterial({
+                    color: 0x0088ff, // Bleu électrique plus visible
+                    transparent: true,
+                    opacity: 1
+                });
+                
+                const bolt = new THREE.Line(geometry, material);
+                bolt.userData.angleOffset = (i / numBolts) * Math.PI * 2;
+                mainGroup.add(bolt);
+                bolts.push(bolt);
+                
+                // Ajouter des sphères lumineuses le long de l'éclair
+                for (let k = 0; k < 3; k++) {
+                    const sparkGeo = new THREE.SphereGeometry(0.15, 8, 8);
+                    const sparkMat = new THREE.MeshBasicMaterial({
+                        color: 0x00ffff,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    const spark = new THREE.Mesh(sparkGeo, sparkMat);
+                    spark.userData.sparkIndex = k;
+                    bolt.add(spark);
+                }
+            }
+            
+            return bolts;
+        }
+        
+        function updateLightningBolts(bolts, component, footprintData, progress) {
+            const compPos = component.position;
+            const targetPos = footprintData.group.position;
+            
+            // Only show bolts during descent phase (30% à 90%)
+            const boltOpacity = progress > 0.3 ? Math.min((progress - 0.3) / 0.15, 1) * (1 - Math.max(0, (progress - 0.85) / 0.15)) : 0;
+            
+            bolts.forEach((bolt, index) => {
+                const positions = bolt.geometry.attributes.position;
+                const time = performance.now();
+                const angle = bolt.userData.angleOffset + time * 0.008;
+                const radius = 2.5 + Math.sin(time * 0.015 + index) * 0.8;
+                
+                // Start point (component)
+                const startX = compPos.x + Math.cos(angle) * radius;
+                const startZ = compPos.z + Math.sin(angle) * radius;
+                const startY = compPos.y - 1;
+                
+                // End point (footprint)
+                const endX = targetPos.x + Math.cos(angle + Math.PI) * radius * 0.3;
+                const endZ = targetPos.z + Math.sin(angle + Math.PI) * radius * 0.3;
+                const endY = targetPos.y + 0.5;
+                
+                // Generate zigzag points
+                const numPoints = 12;
+                for (let i = 0; i < numPoints; i++) {
+                    const t = i / (numPoints - 1);
+                    
+                    let x = startX + (endX - startX) * t;
+                    let y = startY + (endY - startY) * t;
+                    let z = startZ + (endZ - startZ) * t;
+                    
+                    // Add random offset for lightning effect
+                    if (i > 0 && i < numPoints - 1) {
+                        const jitter = 2.0 * (1 - t) * (0.5 + Math.random() * 0.5);
+                        x += (Math.random() - 0.5) * jitter;
+                        z += (Math.random() - 0.5) * jitter;
+                        y += (Math.random() - 0.5) * jitter * 0.3;
+                    }
+                    
+                    positions.setXYZ(i, x, y, z);
+                }
+                
+                positions.needsUpdate = true;
+                bolt.material.opacity = boltOpacity * (0.7 + Math.random() * 0.3);
+                bolt.visible = boltOpacity > 0.1;
+                
+                // Color variation: bleu électrique → cyan
+                const hue = 0.55 + Math.sin(time * 0.02 + index * 0.5) * 0.08;
+                bolt.material.color.setHSL(hue, 1, 0.55);
+                
+                // Update spark positions along bolt
+                bolt.children.forEach((spark, sparkIdx) => {
+                    if (spark.userData.sparkIndex !== undefined) {
+                        const t = (sparkIdx + 1) / 4;
+                        const posIdx = Math.floor(t * (numPoints - 1));
+                        const px = positions.getX(posIdx);
+                        const py = positions.getY(posIdx);
+                        const pz = positions.getZ(posIdx);
+                        spark.position.set(px - compPos.x, py - compPos.y, pz - compPos.z);
+                        spark.material.opacity = boltOpacity * (0.5 + Math.random() * 0.5);
+                        spark.scale.setScalar(0.8 + Math.random() * 0.4);
+                    }
+                });
+            });
+        }
+        
+        function removeLightningBolts(bolts) {
+            bolts.forEach(bolt => {
+                // Nettoyer les sparks enfants
+                bolt.children.forEach(spark => {
+                    if (spark.geometry) spark.geometry.dispose();
+                    if (spark.material) spark.material.dispose();
+                });
+                bolt.clear();
+                
+                mainGroup.remove(bolt);
+                bolt.geometry.dispose();
+                bolt.material.dispose();
+            });
+        }
+        
+        function createLandingFlash(component, footprintData) {
+            // Create expanding ring flash
+            const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+            const ringMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 1,
+                side: THREE.DoubleSide
+            });
+            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+            ring.position.copy(footprintData.group.position);
+            ring.position.y = component.userData.face === 'bottom' ? -BOARD_THICKNESS/2 - 0.1 : BOARD_THICKNESS/2 + 0.1;
+            ring.rotation.x = -Math.PI / 2;
+            mainGroup.add(ring);
+            
+            // Anneau secondaire
+            const ring2Geo = new THREE.RingGeometry(0.2, 0.8, 32);
+            const ring2Mat = new THREE.MeshBasicMaterial({
+                color: 0x00aaff,
+                transparent: true,
+                opacity: 0.8,
+                side: THREE.DoubleSide
+            });
+            const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+            ring2.position.copy(ring.position);
+            ring2.rotation.x = -Math.PI / 2;
+            mainGroup.add(ring2);
+            
+            // Create spark particles - plus nombreuses et colorées
+            const sparks = [];
+            for (let i = 0; i < 20; i++) {
+                const sparkGeo = new THREE.SphereGeometry(0.15, 6, 6);
+                const sparkColor = i % 2 === 0 ? 0x00ffff : 0x0088ff;
+                const sparkMat = new THREE.MeshBasicMaterial({
+                    color: sparkColor,
+                    transparent: true,
+                    opacity: 1
+                });
+                const spark = new THREE.Mesh(sparkGeo, sparkMat);
+                spark.position.copy(ring.position);
+                const angle = (i / 20) * Math.PI * 2;
+                const speed = 0.25 + Math.random() * 0.2;
+                spark.userData.velocity = new THREE.Vector3(
+                    Math.cos(angle) * speed,
+                    0.3 + Math.random() * 0.25,
+                    Math.sin(angle) * speed
+                );
+                mainGroup.add(spark);
+                sparks.push(spark);
+            }
+            
+            // Animate flash
+            const flashStart = performance.now();
+            const flashDuration = 500;
+            
+            function animateFlash(time) {
+                const elapsed = time - flashStart;
+                const progress = elapsed / flashDuration;
+                
+                if (progress < 1) {
+                    // Expand rings
+                    const scale1 = 1 + progress * 10;
+                    const scale2 = 1 + progress * 6;
+                    ring.scale.set(scale1, scale1, 1);
+                    ring.material.opacity = (1 - progress) * 0.8;
+                    ring2.scale.set(scale2, scale2, 1);
+                    ring2.material.opacity = (1 - progress) * 0.6;
+                    
+                    // Animate sparks
+                    sparks.forEach(spark => {
+                        spark.position.add(spark.userData.velocity);
+                        spark.userData.velocity.y -= 0.018; // gravity
+                        spark.material.opacity = 1 - progress * 0.8;
+                        spark.scale.setScalar(1 - progress * 0.4);
+                    });
+                    
+                    requestAnimationFrame(animateFlash);
+                } else {
+                    // Cleanup
+                    mainGroup.remove(ring);
+                    ring.geometry.dispose();
+                    ring.material.dispose();
+                    mainGroup.remove(ring2);
+                    ring2.geometry.dispose();
+                    ring2.material.dispose();
+                    
+                    sparks.forEach(spark => {
+                        mainGroup.remove(spark);
+                        spark.geometry.dispose();
+                        spark.material.dispose();
+                    });
+                }
+            }
+            
+            requestAnimationFrame(animateFlash);
+        }
+
+        // ============================================
+        // CONTROLS
+        // ============================================
+        
+        function setupControls() {
+            // Store original states
+            componentMeshes.forEach(mesh => {
+                if (mesh.userData.id) {
+                    componentOriginalStates.set(mesh.userData.id, {
+                        position: mesh.position.clone(),
+                        rotation: mesh.rotation.clone(),
+                        scale: mesh.scale.clone(),
+                        customRotX: 0,
+                        customRotY: 0,
+                        customScale: 1,
+                        wasMoved: false
+                    });
+                }
+            });
+            
+            // Reset button
+            document.getElementById('btnReset').addEventListener('click', resetAllComponents);
+            
+            // Mode buttons - redirect to appropriate file
+            document.getElementById('btnSolid').addEventListener('click', () => {
+                // Already in solid mode
+                document.getElementById('btnSolid').classList.add('active');
+                document.getElementById('btnWireframe').classList.remove('active');
+            });
+            
+            document.getElementById('btnWireframe').addEventListener('click', () => {
+                window.location.href = 'pinephone-footprint-wireframe.html';
+            });
+            
+            // Mouse down
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return;
+                
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                
+                const intersects = raycaster.intersectObjects(componentMeshes, true);
+                
+                if (intersects.length > 0) {
+                    let comp = intersects[0].object;
+                    while (comp.parent && !componentMeshes.includes(comp)) {
+                        comp = comp.parent;
+                    }
+                    
+                    if (componentMeshes.includes(comp) && comp.userData.id) {
+                        isDraggingComponent = true;
+                        draggedComponent = comp;
+                        document.body.classList.add('dragging-component');
+                        
+                        const state = componentOriginalStates.get(comp.userData.id);
+                        if (state) state.wasMoved = true;
+                        
+                        // Mark footprint as unoccupied
+                        const footprintInfo = componentFootprints.get(comp.userData.id);
+                        if (footprintInfo) {
+                            const padData = padsByFootprint.get(footprintInfo.posKey);
+                            if (padData) padData.occupied = false;
+                        }
+                        comp.userData.isConnected = false;
+                        
+                        const cameraDirection = new THREE.Vector3();
+                        camera.getWorldDirection(cameraDirection);
+                        dragPlane.setFromNormalAndCoplanarPoint(cameraDirection.negate(), comp.position);
+                        
+                        const intersection = new THREE.Vector3();
+                        raycaster.ray.intersectPlane(dragPlane, intersection);
+                        dragOffset.copy(comp.position).sub(intersection);
+                        
+                        hideScrollbars();
+                    }
+                } else {
+                    isRotating = true;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                }
+            });
+            
+            // Mouse move
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                
+                if (isDraggingComponent && draggedComponent) {
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersection = new THREE.Vector3();
+                    if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
+                        draggedComponent.position.copy(intersection.add(dragOffset));
+                        
+                        // Check compatibility
+                        const result = checkCompatibility(draggedComponent, draggedComponent.position);
+                        currentCompatibility = result.status;
+                        nearestPad = result.nearestPad;
+                        updateCompatibilityVisuals(result.status, draggedComponent, result.nearestPad);
+                    }
+                } else if (isRotating) {
+                    const deltaX = e.clientX - lastX;
+                    const deltaY = e.clientY - lastY;
+                    spherical.theta -= deltaX * 0.01;
+                    spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi - deltaY * 0.01));
+                    updateCamera();
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                } else if (!isScrollbarDragging) {
+                    raycaster.setFromCamera(mouse, camera);
+                    const intersects = raycaster.intersectObjects(componentMeshes, true);
+                    
+                    if (intersects.length > 0) {
+                        let comp = intersects[0].object;
+                        while (comp.parent && !componentMeshes.includes(comp)) {
+                            comp = comp.parent;
+                        }
+                        
+                        if (componentMeshes.includes(comp) && comp.userData.id) {
+                            if (hoveredForScroll !== comp) {
+                                hoveredForScroll = comp;
+                                showScrollbars(comp, e.clientX, e.clientY);
+                            } else {
+                                updateScrollbarsPosition(comp);
+                            }
+                            
+                            // Show hover info
+                            hoverInfo.textContent = comp.userData.id;
+                            hoverInfo.style.left = (e.clientX + 15) + 'px';
+                            hoverInfo.style.top = (e.clientY - 10) + 'px';
+                            hoverInfo.classList.add('visible');
+                        } else {
+                            hideScrollbars();
+                            hoverInfo.classList.remove('visible');
+                        }
+                    } else {
+                        hideScrollbars();
+                        hoverInfo.classList.remove('visible');
+                    }
+                }
+            });
+            
+            // Mouse up
+            window.addEventListener('mouseup', (e) => {
+                if (isDraggingComponent && draggedComponent) {
+                    // Snap if compatible
+                    if (currentCompatibility === 'compatible' && nearestPad) {
+                        snapToFootprint(draggedComponent, nearestPad);
+                    }
+                    
+                    clearCompatibilityVisuals();
+                    isDraggingComponent = false;
+                    draggedComponent = null;
+                    currentCompatibility = null;
+                    nearestPad = null;
+                    document.body.classList.remove('dragging-component');
+                    
+                    updateConnectionStats();
+                }
+                isRotating = false;
+                
+                if (isScrollbarDragging) {
+                    isScrollbarDragging = false;
+                    scrollbarLocked = false;
+                    scrollbarV.classList.remove('active');
+                    scrollbarH.classList.remove('active');
+                }
+            });
+            
+            // Wheel
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                
+                if (hoveredForScroll) {
+                    const zoomDelta = e.deltaY * 0.001;
+                    const state = componentOriginalStates.get(hoveredForScroll.userData.id);
+                    if (state) {
+                        state.customScale = Math.max(0.5, Math.min(3, (state.customScale || 1) - zoomDelta));
+                        hoveredForScroll.scale.setScalar(state.customScale);
+                        updateScrollbarsPosition(hoveredForScroll);
+                    }
+                } else {
+                    const delta = e.deltaY * -0.001;
+                    deployProgress = Math.max(0, Math.min(1, deployProgress + delta));
+                }
+            }, { passive: false });
+            
+            // Scrollbar events - lock when mouse enters
+            scrollbarV.addEventListener('mouseenter', () => {
+                scrollbarLocked = true;
+                if (hideScrollbarTimer) {
+                    clearTimeout(hideScrollbarTimer);
+                    hideScrollbarTimer = null;
+                }
+            });
+            
+            scrollbarV.addEventListener('mouseleave', () => {
+                if (!isScrollbarDragging) {
+                    scrollbarLocked = false;
+                }
+            });
+            
+            scrollbarH.addEventListener('mouseenter', () => {
+                scrollbarLocked = true;
+                if (hideScrollbarTimer) {
+                    clearTimeout(hideScrollbarTimer);
+                    hideScrollbarTimer = null;
+                }
+            });
+            
+            scrollbarH.addEventListener('mouseleave', () => {
+                if (!isScrollbarDragging) {
+                    scrollbarLocked = false;
+                }
+            });
+            
+            // Scrollbar drag events
+            scrollbarV.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                isScrollbarDragging = true;
+                scrollbarLocked = true;
+                activeScrollbar = 'v';
+                scrollStartY = e.clientY;
+                scrollbarV.classList.add('active');
+            });
+            
+            scrollbarH.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                isScrollbarDragging = true;
+                scrollbarLocked = true;
+                activeScrollbar = 'h';
+                scrollStartX = e.clientX;
+                scrollbarH.classList.add('active');
+            });
+            
+            window.addEventListener('mousemove', (e) => {
+                if (!isScrollbarDragging || !hoveredForScroll) return;
+                
+                const state = componentOriginalStates.get(hoveredForScroll.userData.id);
+                if (!state) return;
+                
+                if (activeScrollbar === 'v') {
+                    const deltaY = e.clientY - scrollStartY;
+                    state.customRotY = (state.customRotY || 0) + deltaY * 0.02;
+                    hoveredForScroll.rotation.y = state.customRotY;
+                    scrollStartY = e.clientY;
+                    
+                    const thumbPos = 30 + Math.sin(state.customRotY) * 25;
+                    thumbV.style.top = thumbPos + 'px';
+                } else if (activeScrollbar === 'h') {
+                    const deltaX = e.clientX - scrollStartX;
+                    state.customRotX = (state.customRotX || 0) + deltaX * 0.02;
+                    hoveredForScroll.rotation.x = state.customRotX;
+                    scrollStartX = e.clientX;
+                    
+                    const thumbPos = 30 + Math.sin(state.customRotX) * 25;
+                    thumbH.style.left = thumbPos + 'px';
+                }
+            });
+            
+            // Keyboard
+            document.addEventListener('keydown', (e) => {
+                switch(e.key.toLowerCase()) {
+                    case 'r':
+                        spherical = { theta: 0, phi: Math.PI / 4, radius: 140 };
+                        updateCamera();
+                        break;
+                    case 't':
+                        spherical.phi = 0.1;
+                        spherical.radius = 150;
+                        updateCamera();
+                        break;
+                    case 'p':
+                        showPads = !showPads;
+                        footprintGroups.forEach(g => g.visible = showPads);
+                        break;
+                    case 'escape':
+                        hideScrollbars();
+                        break;
+                }
+            });
+            
+            // Resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            updateCamera();
+        }
+        
+        function updateCamera() {
+            camera.position.x = target.x + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+            camera.position.y = target.y + spherical.radius * Math.cos(spherical.phi);
+            camera.position.z = target.z + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+            camera.lookAt(target);
+        }
+        
+        function showScrollbars(component, mouseX, mouseY) {
+            if (!component) return;
+            
+            // Annuler le timer de masquage
+            if (hideScrollbarTimer) {
+                clearTimeout(hideScrollbarTimer);
+                hideScrollbarTimer = null;
+            }
+            
+            const pos = getScreenPosition(component);
+            if (!pos) return;
+            
+            const box = new THREE.Box3().setFromObject(component);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const screenSize = Math.max(50, Math.min(150, maxDim * 5));
+            
+            scrollbarV.style.left = (pos.x + screenSize / 2 + 20) + 'px';
+            scrollbarV.style.top = (pos.y - 50) + 'px';
+            
+            scrollbarH.style.left = (pos.x - 50) + 'px';
+            scrollbarH.style.top = (pos.y + screenSize / 2 + 20) + 'px';
+            
+            floatingName.textContent = component.userData.id;
+            floatingInfo.style.left = (pos.x - 60) + 'px';
+            floatingInfo.style.top = (pos.y - screenSize / 2 - 50) + 'px';
+            floatingInfo.classList.add('visible');
+            
+            componentScrollbars.classList.add('visible');
+        }
+        
+        function updateScrollbarsPosition(component) {
+            if (!component || !componentScrollbars.classList.contains('visible')) return;
+            
+            const pos = getScreenPosition(component);
+            if (!pos) return;
+            
+            const box = new THREE.Box3().setFromObject(component);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            const state = componentOriginalStates.get(component.userData.id);
+            const scale = state ? (state.customScale || 1) : 1;
+            const screenSize = Math.max(50, Math.min(150, Math.max(size.x, size.y, size.z) * 5 * scale));
+            
+            scrollbarV.style.left = (pos.x + screenSize / 2 + 20) + 'px';
+            scrollbarV.style.top = (pos.y - 50) + 'px';
+            
+            scrollbarH.style.left = (pos.x - 50) + 'px';
+            scrollbarH.style.top = (pos.y + screenSize / 2 + 20) + 'px';
+            
+            floatingInfo.style.left = (pos.x - 60) + 'px';
+            floatingInfo.style.top = (pos.y - screenSize / 2 - 50) + 'px';
+        }
+        
+        function hideScrollbars(immediate = false) {
+            if (scrollbarLocked || isScrollbarDragging) return;
+            
+            if (immediate) {
+                if (hideScrollbarTimer) clearTimeout(hideScrollbarTimer);
+                hoveredForScroll = null;
+                componentScrollbars.classList.remove('visible');
+                floatingInfo.classList.remove('visible');
+            } else {
+                // Délai avant de cacher pour éviter les clignotements
+                if (hideScrollbarTimer) clearTimeout(hideScrollbarTimer);
+                hideScrollbarTimer = setTimeout(() => {
+                    if (!scrollbarLocked && !isScrollbarDragging) {
+                        hoveredForScroll = null;
+                        componentScrollbars.classList.remove('visible');
+                        floatingInfo.classList.remove('visible');
+                    }
+                }, 150);
+            }
+        }
+        
+        function getScreenPosition(object) {
+            const vector = new THREE.Vector3();
+            const box = new THREE.Box3().setFromObject(object);
+            box.getCenter(vector);
+            vector.project(camera);
+            
+            return {
+                x: (vector.x * 0.5 + 0.5) * window.innerWidth,
+                y: (-vector.y * 0.5 + 0.5) * window.innerHeight
+            };
+        }
+        
+        function resetAllComponents() {
+            componentMeshes.forEach(mesh => {
+                if (mesh.userData.id && componentOriginalStates.has(mesh.userData.id)) {
+                    const state = componentOriginalStates.get(mesh.userData.id);
+                    
+                    // Reset to original position
+                    if (mesh.userData.originalPosition) {
+                        mesh.position.copy(mesh.userData.originalPosition);
+                    }
+                    mesh.rotation.set(0, 0, 0);
+                    mesh.scale.set(1, 1, 1);
+                    
+                    state.customRotX = 0;
+                    state.customRotY = 0;
+                    state.customScale = 1;
+                    state.wasMoved = false;
+                    
+                    mesh.userData.isConnected = true;
+                }
+            });
+            
+            // Reset all footprints to occupied
+            padsByFootprint.forEach(padData => {
+                padData.occupied = true;
+            });
+            
+            deployProgress = 0;
+            hideScrollbars();
+            clearCompatibilityVisuals();
+            updateConnectionStats();
+        }
+        
+        function updateConnectionStats() {
+            let connected = 0;
+            componentMeshes.forEach(mesh => {
+                if (mesh.userData.isConnected) connected++;
+            });
+            stats.connected = connected;
+            document.getElementById('connected-count').textContent = connected;
+        }
+        
+        function updateDeployment() {
+            componentMeshes.forEach(mesh => {
+                if (mesh.userData.zOffset !== undefined) {
+                    const state = componentOriginalStates.get(mesh.userData.id);
+                    if (state && state.wasMoved) return;
+                    
+                    const isBottom = mesh.userData.face === 'bottom';
+                    const direction = isBottom ? -1 : 1;
+                    const targetY = direction * mesh.userData.zOffset * deployProgress * 6;
+                    mesh.position.y = targetY;
+                }
+            });
+            
+            document.getElementById('deployFill').style.height = (deployProgress * 100) + '%';
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            updateDeployment();
+            
+            if (hoveredForScroll && componentScrollbars.classList.contains('visible')) {
+                updateScrollbarsPosition(hoveredForScroll);
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        init();
+    </script>
+</body>
+</html>

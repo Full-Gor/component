@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PinePhone Mainboard 3D - v1.1</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap');
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             background: #0a0a0f;
             color: #e0e0e0;
@@ -22,13 +23,13 @@
             -webkit-user-select: none;
             user-select: none;
         }
-        
+
         #canvas-container {
             width: 100vw;
             height: 100vh;
             position: relative;
         }
-        
+
         #info-panel {
             position: fixed;
             top: 20px;
@@ -43,11 +44,11 @@
             box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
             transition: opacity 0.3s ease;
         }
-        
+
         body.isolated #info-panel {
             opacity: 0.3;
         }
-        
+
         #info-panel h1 {
             font-family: 'Orbitron', sans-serif;
             font-size: 1.4rem;
@@ -56,40 +57,40 @@
             text-transform: uppercase;
             letter-spacing: 2px;
         }
-        
+
         #info-panel .version {
             font-size: 0.75rem;
             color: #666;
             margin-bottom: 15px;
         }
-        
+
         #info-panel .stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
             margin-bottom: 15px;
         }
-        
+
         #info-panel .stat {
             background: rgba(0, 255, 136, 0.1);
             padding: 10px;
             border-radius: 4px;
             border-left: 3px solid #00ff88;
         }
-        
+
         #info-panel .stat-label {
             font-size: 0.65rem;
             color: #888;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        
+
         #info-panel .stat-value {
             font-size: 1.1rem;
             color: #00ff88;
             font-weight: 700;
         }
-        
+
         #component-info {
             background: rgba(255, 170, 0, 0.1);
             border: 1px solid #ffaa00;
@@ -98,32 +99,51 @@
             margin-top: 10px;
             display: none;
         }
-        
+
         #component-info.visible {
             display: block;
             animation: glitch 0.3s ease;
         }
-        
+
         @keyframes glitch {
-            0% { transform: translateX(-2px); opacity: 0.8; }
-            25% { transform: translateX(2px); opacity: 1; }
-            50% { transform: translateX(-1px); opacity: 0.9; }
-            75% { transform: translateX(1px); opacity: 1; }
-            100% { transform: translateX(0); opacity: 1; }
+            0% {
+                transform: translateX(-2px);
+                opacity: 0.8;
+            }
+
+            25% {
+                transform: translateX(2px);
+                opacity: 1;
+            }
+
+            50% {
+                transform: translateX(-1px);
+                opacity: 0.9;
+            }
+
+            75% {
+                transform: translateX(1px);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
-        
+
         #component-info h3 {
             color: #ffaa00;
             font-size: 0.9rem;
             margin-bottom: 5px;
         }
-        
+
         #component-info p {
             font-size: 0.75rem;
             color: #ccc;
             line-height: 1.5;
         }
-        
+
         /* Boutons de mode */
         .buttons-container {
             position: fixed;
@@ -135,11 +155,11 @@
             z-index: 100;
             transition: left 0.5s ease, transform 0.5s ease;
         }
-        
+
         body.isolated .buttons-container {
             left: 30%;
         }
-        
+
         .btn-mode {
             font-family: 'Orbitron', sans-serif;
             font-size: 11px;
@@ -154,29 +174,29 @@
             text-transform: uppercase;
             letter-spacing: 2px;
         }
-        
+
         .btn-mode:hover {
             background: rgba(0, 100, 80, 0.4);
             box-shadow: 0 0 25px rgba(0, 255, 136, 0.6);
         }
-        
+
         .btn-mode.active {
             background: rgba(0, 150, 100, 0.5);
             box-shadow: 0 0 30px rgba(0, 255, 136, 0.8);
             color: #fff;
         }
-        
+
         .btn-mode.wireframe-btn {
             border-color: #00ffff;
             color: #00ffff;
             box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
         }
-        
+
         .btn-mode.wireframe-btn:hover {
             background: rgba(0, 100, 150, 0.4);
             box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
         }
-        
+
         #controls {
             position: fixed;
             bottom: 20px;
@@ -188,11 +208,11 @@
             z-index: 100;
             transition: opacity 0.3s ease;
         }
-        
+
         body.isolated #controls {
             opacity: 0.3;
         }
-        
+
         #controls h4 {
             font-size: 0.7rem;
             color: #0088ff;
@@ -200,17 +220,17 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        
+
         #controls ul {
             list-style: none;
             font-size: 0.7rem;
             color: #888;
         }
-        
+
         #controls li {
             margin-bottom: 5px;
         }
-        
+
         #controls kbd {
             background: #222;
             padding: 2px 6px;
@@ -219,7 +239,7 @@
             color: #0088ff;
             font-family: inherit;
         }
-        
+
         #legend {
             position: fixed;
             top: 20px;
@@ -232,11 +252,11 @@
             min-width: 200px;
             transition: opacity 0.3s ease;
         }
-        
+
         body.isolated #legend {
             opacity: 0.3;
         }
-        
+
         #legend h4 {
             font-size: 0.7rem;
             color: #ff0088;
@@ -244,22 +264,22 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        
+
         .legend-item {
             display: flex;
             align-items: center;
             margin-bottom: 8px;
             font-size: 0.7rem;
         }
-        
+
         .legend-color {
             width: 16px;
             height: 16px;
             border-radius: 3px;
             margin-right: 10px;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        
+
         #loading {
             position: fixed;
             top: 0;
@@ -274,12 +294,12 @@
             z-index: 1000;
             transition: opacity 0.5s ease;
         }
-        
+
         #loading.hidden {
             opacity: 0;
             pointer-events: none;
         }
-        
+
         #loading h2 {
             font-family: 'Orbitron', sans-serif;
             color: #00ff88;
@@ -287,7 +307,7 @@
             margin-bottom: 20px;
             letter-spacing: 3px;
         }
-        
+
         .loader {
             width: 200px;
             height: 4px;
@@ -295,24 +315,24 @@
             border-radius: 2px;
             overflow: hidden;
         }
-        
+
         .loader-bar {
             width: 0%;
             height: 100%;
             background: linear-gradient(90deg, #00ff88, #0088ff);
             transition: width 0.3s ease;
         }
-        
+
         #loading-text {
             margin-top: 15px;
             font-size: 0.75rem;
             color: #666;
         }
-        
+
         /* ============================================ */
         /* SYSTÈME D'ISOLATION */
         /* ============================================ */
-        
+
         /* Hover info */
         .hover-info {
             position: fixed;
@@ -330,11 +350,11 @@
             z-index: 400;
             white-space: nowrap;
         }
-        
+
         .hover-info.visible {
             opacity: 1;
         }
-        
+
         /* Zone d'isolation */
         .isolation-zone {
             position: fixed;
@@ -351,21 +371,21 @@
             border-radius: 10px;
             background: rgba(0, 20, 10, 0.4);
         }
-        
+
         .isolation-zone.active {
             display: flex;
         }
-        
+
         .isolated-element-container {
             width: 100%;
             height: 100%;
             cursor: grab;
         }
-        
+
         .isolated-element-container:active {
             cursor: grabbing;
         }
-        
+
         /* Info isolation */
         .isolation-info {
             position: fixed;
@@ -380,11 +400,11 @@
             transition: opacity 0.5s ease;
             z-index: 250;
         }
-        
+
         .isolation-info.visible {
             opacity: 1;
         }
-        
+
         .isolation-info .element-name {
             font-family: 'Orbitron', sans-serif;
             font-size: 22px;
@@ -393,18 +413,18 @@
             text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
             margin-bottom: 8px;
         }
-        
+
         .isolation-info .element-desc {
             font-size: 11px;
             color: rgba(150, 255, 200, 0.7);
             margin-bottom: 10px;
         }
-        
+
         .isolation-info .instructions {
             font-size: 9px;
             color: rgba(100, 200, 150, 0.5);
         }
-        
+
         /* Zone de retour */
         .throw-zone {
             position: fixed;
@@ -418,12 +438,12 @@
             z-index: 150;
             pointer-events: none;
         }
-        
+
         .throw-zone.active {
             display: flex;
             pointer-events: auto;
         }
-        
+
         .throw-zone-indicator {
             width: 100px;
             height: 100px;
@@ -434,20 +454,20 @@
             align-items: center;
             transition: all 0.3s ease;
         }
-        
+
         .throw-zone.drag-over .throw-zone-indicator {
             border-color: rgba(0, 255, 136, 0.8);
             background: rgba(0, 255, 136, 0.1);
             transform: scale(1.3);
         }
-        
+
         .throw-zone-text {
             color: rgba(0, 255, 136, 0.5);
             font-size: 10px;
             letter-spacing: 2px;
             text-align: center;
         }
-        
+
         /* Indicateur de composants */
         .component-list {
             position: fixed;
@@ -466,24 +486,24 @@
             border: 1px solid rgba(0, 255, 136, 0.2);
             transition: opacity 0.3s ease;
         }
-        
+
         body.isolated .component-list {
             opacity: 0.2;
         }
-        
+
         .component-list::-webkit-scrollbar {
             width: 4px;
         }
-        
+
         .component-list::-webkit-scrollbar-track {
             background: rgba(0, 0, 0, 0.3);
         }
-        
+
         .component-list::-webkit-scrollbar-thumb {
             background: #00ff88;
             border-radius: 2px;
         }
-        
+
         .component-list-item {
             display: flex;
             align-items: center;
@@ -496,29 +516,43 @@
             padding: 4px 8px;
             border-radius: 4px;
         }
-        
+
         .component-list-item:hover {
             background: rgba(0, 255, 136, 0.1);
             color: rgba(255, 255, 255, 0.8);
         }
-        
+
         .component-list-item.active {
             color: #00ff88;
             background: rgba(0, 255, 136, 0.2);
         }
-        
+
         .component-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
         }
-        
-        .component-dot.connector { background: #00ff88; }
-        .component-dot.ic { background: #ff00ff; }
-        .component-dot.antenna { background: #ffff00; }
-        .component-dot.passive { background: #ff8800; }
-        .component-dot.other { background: #00ffff; }
-        
+
+        .component-dot.connector {
+            background: #00ff88;
+        }
+
+        .component-dot.ic {
+            background: #ff00ff;
+        }
+
+        .component-dot.antenna {
+            background: #ffff00;
+        }
+
+        .component-dot.passive {
+            background: #ff8800;
+        }
+
+        .component-dot.other {
+            background: #00ffff;
+        }
+
         /* Deploy indicator */
         .deploy-indicator {
             position: fixed;
@@ -532,11 +566,11 @@
             z-index: 100;
             transition: opacity 0.3s ease;
         }
-        
+
         body.isolated .deploy-indicator {
             opacity: 0.2;
         }
-        
+
         .deploy-indicator .fill {
             position: absolute;
             bottom: 0;
@@ -546,7 +580,7 @@
             transition: height 0.1s ease-out;
             box-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
         }
-        
+
         .deploy-indicator .label {
             position: absolute;
             right: 15px;
@@ -558,7 +592,7 @@
             writing-mode: vertical-rl;
             text-orientation: mixed;
         }
-        
+
         .scroll-info {
             position: fixed;
             bottom: 90px;
@@ -571,12 +605,42 @@
             pointer-events: none;
             transition: opacity 0.3s ease;
         }
-        
+
         body.isolated .scroll-info {
             opacity: 0.2;
         }
+
+        /* Drag indicator */
+        .drag-indicator {
+            position: fixed;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 500;
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid rgba(0, 255, 136, 0.6);
+            border-radius: 5px;
+            padding: 8px 15px;
+            color: #00ff88;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+            white-space: nowrap;
+        }
+
+        .drag-indicator.active {
+            opacity: 1;
+        }
+
+        .isolation-zone.drag-hover {
+            border-color: rgba(0, 255, 136, 0.8);
+            background: rgba(0, 255, 136, 0.15);
+            box-shadow: 0 0 40px rgba(0, 255, 136, 0.4);
+        }
     </style>
 </head>
+
 <body>
     <div id="loading">
         <h2>PINEPHONE PCB</h2>
@@ -585,41 +649,45 @@
         </div>
         <p id="loading-text">Initialisation...</p>
     </div>
-    
+
     <div id="canvas-container"></div>
-    
+
     <div class="deploy-indicator">
         <div class="fill" id="deployFill"></div>
         <div class="label">EXPLODE</div>
     </div>
-    
-    <div class="scroll-info">SCROLL = EXPLOSER • CLIC = ISOLER COMPOSANT</div>
-    
+
+    <div class="scroll-info">SCROLL = EXPLOSER • GLISSER VERS DROITE = ISOLER COMPOSANT</div>
+
+    <!-- Drag indicator -->
+    <div class="drag-indicator" id="dragIndicator"></div>
+
     <!-- Hover info -->
     <div class="hover-info" id="hoverInfo"></div>
-    
+
     <!-- Zone d'isolation -->
     <div class="isolation-zone" id="isolationZone">
         <div class="isolated-element-container" id="isolatedContainer"></div>
     </div>
-    
+
     <!-- Info isolation -->
     <div class="isolation-info" id="isolationInfo">
         <div class="element-name" id="elementName">--</div>
         <div class="element-desc" id="elementDesc">--</div>
-        <div class="instructions">GLISSER = Rotation 3D • SCROLL = Zoom • JETER À GAUCHE = Remettre • ÉCHAP = Sortir</div>
+        <div class="instructions">GLISSER = Rotation 3D • SCROLL = Zoom • JETER À GAUCHE = Remettre • ÉCHAP = Sortir
+        </div>
     </div>
-    
+
     <!-- Zone de retour -->
     <div class="throw-zone" id="throwZone">
         <div class="throw-zone-indicator">
             <div class="throw-zone-text">RELÂCHER<br>ICI</div>
         </div>
     </div>
-    
+
     <!-- Liste des composants -->
     <div class="component-list" id="componentList"></div>
-    
+
     <div id="info-panel">
         <h1>PinePhone Mainboard</h1>
         <p class="version">Version 1.1 — 2019.10.31</p>
@@ -646,7 +714,7 @@
             <p id="component-desc">—</p>
         </div>
     </div>
-    
+
     <div id="controls">
         <h4>Contrôles</h4>
         <ul>
@@ -658,7 +726,7 @@
             <li><kbd>Échap</kbd> Sortir isolation</li>
         </ul>
     </div>
-    
+
     <div id="legend">
         <h4>Légende</h4>
         <div class="legend-item">
@@ -686,7 +754,7 @@
             <span>Antennes</span>
         </div>
     </div>
-    
+
     <div class="buttons-container">
         <button class="btn-mode active" id="btnSolid">SOLID</button>
         <button class="btn-mode wireframe-btn" id="btnWireframe">WIREFRAME</button>
@@ -876,7 +944,21 @@
         let raycaster, mouse;
         let componentMeshes = [];
         let mainGroup;
-        
+
+        // Isolation scene
+        let isoScene, isoCamera, isoRenderer, isoPivot;
+
+        // DOM elements
+        let isolatedContainer, hoverInfo, componentList;
+        let throwZone, isolationZone, isolationInfo, elementName, elementDesc;
+
+        // Camera control
+        let spherical = { theta: 0, phi: Math.PI / 4, radius: 120 };
+        let target = new THREE.Vector3(0, 0, 0);
+
+        // Stats
+        const stats = { components: 0, connectors: 0, antennas: 0 };
+
         // State
         let deployProgress = 0;
         let isIsolated = false;
@@ -889,82 +971,68 @@
         let velocityX = 0, velocityY = 0;
         let hoveredComponent = null;
 
-        // Camera controls
-        let spherical = { theta: 0, phi: Math.PI / 4, radius: 120 };
-        let target = new THREE.Vector3(0, 0, 0);
-
-        // DOM Elements
-        const hoverInfo = document.getElementById('hoverInfo');
-        const isolationZone = document.getElementById('isolationZone');
-        const isolatedContainer = document.getElementById('isolatedContainer');
-        const isolationInfo = document.getElementById('isolationInfo');
-        const elementName = document.getElementById('elementName');
-        const elementDesc = document.getElementById('elementDesc');
-        const throwZone = document.getElementById('throwZone');
-        const componentList = document.getElementById('componentList');
-
-        // Isolation scene
-        let isoScene, isoCamera, isoRenderer, isoPivot;
-
-        // Stats
-        let stats = {
-            components: 0,
-            connectors: 0,
-            antennas: 0
-        };
-
         function init() {
+            // Initialize DOM references
+            isolatedContainer = document.getElementById('isolatedContainer');
+            hoverInfo = document.getElementById('hoverInfo');
+            componentList = document.getElementById('componentList');
+            throwZone = document.getElementById('throwZone');
+            isolationZone = document.getElementById('isolationZone');
+            isolationInfo = document.getElementById('isolationInfo');
+            elementName = document.getElementById('elementName');
+            elementDesc = document.getElementById('elementDesc');
+
             updateLoading(10, 'Création de la scène...');
-            
+
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a0a0f);
-            
+
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, 80, 100);
             camera.lookAt(0, 0, 0);
-            
+
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             document.getElementById('canvas-container').appendChild(renderer.domElement);
-            
+
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
-            
+
             // Main group for all components
             mainGroup = new THREE.Group();
             scene.add(mainGroup);
-            
+
             updateLoading(20, 'Configuration des lumières...');
             setupLights();
-            
+
             updateLoading(30, 'Création du PCB...');
             createPCB();
-            
+
             updateLoading(50, 'Placement des composants...');
             createComponents();
-            
+
             updateLoading(70, 'Création de la scène d\'isolation...');
             setupIsolationScene();
-            
+
             updateLoading(80, 'Création de la liste des composants...');
             createComponentList();
-            
+
             updateLoading(90, 'Initialisation des contrôles...');
             setupControls();
             setupEventListeners();
-            
+
             updateLoading(100, 'Terminé !');
             setTimeout(() => {
                 document.getElementById('loading').classList.add('hidden');
             }, 500);
-            
+
             document.getElementById('component-count').textContent = stats.components;
             document.getElementById('connector-count').textContent = stats.connectors;
             document.getElementById('antenna-count').textContent = stats.antennas;
-            
+
             animate();
         }
 
@@ -976,18 +1044,18 @@
         function setupLights() {
             const ambient = new THREE.AmbientLight(0xffffff, 0.4);
             scene.add(ambient);
-            
+
             const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
             mainLight.position.set(50, 100, 50);
             mainLight.castShadow = true;
             mainLight.shadow.mapSize.width = 2048;
             mainLight.shadow.mapSize.height = 2048;
             scene.add(mainLight);
-            
+
             const fillLight = new THREE.DirectionalLight(0x88aaff, 0.3);
             fillLight.position.set(-50, 50, -50);
             scene.add(fillLight);
-            
+
             const rimLight = new THREE.DirectionalLight(0x00ff88, 0.2);
             rimLight.position.set(0, -50, 100);
             scene.add(rimLight);
@@ -996,26 +1064,26 @@
         function setupIsolationScene() {
             isoScene = new THREE.Scene();
             isoScene.background = new THREE.Color(0x050a0f);
-            
+
             isoCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
             isoCamera.position.set(0, 0, 15);
-            
+
             isoRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             isoRenderer.setSize(450, 450);
             isoRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             isolatedContainer.appendChild(isoRenderer.domElement);
-            
+
             const isoAmbient = new THREE.AmbientLight(0x334455, 0.6);
             isoScene.add(isoAmbient);
-            
+
             const isoMainLight = new THREE.PointLight(0x00ff88, 3, 30);
             isoMainLight.position.set(5, 5, 10);
             isoScene.add(isoMainLight);
-            
+
             const isoBackLight = new THREE.PointLight(0x0088ff, 2, 20);
             isoBackLight.position.set(-5, -5, -5);
             isoScene.add(isoBackLight);
-            
+
             isoPivot = new THREE.Group();
             isoScene.add(isoPivot);
         }
@@ -1027,14 +1095,14 @@
                 roughness: 0.7,
                 metalness: 0.1
             });
-            
+
             const pcb = new THREE.Mesh(pcbGeometry, pcbMaterial);
             pcb.receiveShadow = true;
             pcb.position.y = 0;
             pcb.userData = { id: 'PCB', type: 'pcb', desc: 'Carte mère FR4 4 couches', zOffset: -1 };
             mainGroup.add(pcb);
             componentMeshes.push(pcb);
-            
+
             createCopperTraces();
         }
 
@@ -1044,7 +1112,7 @@
                 roughness: 0.3,
                 metalness: 0.8
             });
-            
+
             const traces = [
                 { x: 0, z: 10, w: 60, h: 0.3 },
                 { x: 0, z: -10, w: 60, h: 0.3 },
@@ -1053,7 +1121,7 @@
                 { x: 20, z: 0, w: 0.3, h: 40 },
                 { x: -20, z: 0, w: 0.3, h: 40 },
             ];
-            
+
             traces.forEach(t => {
                 const geo = new THREE.BoxGeometry(t.w, 0.05, t.h);
                 const mesh = new THREE.Mesh(geo, tracesMaterial);
@@ -1068,28 +1136,28 @@
                 stats.connectors++;
                 stats.components++;
             });
-            
+
             COMPONENTS_DATA.ics.forEach(ic => {
                 createIC(ic);
                 stats.components++;
             });
-            
+
             COMPONENTS_DATA.antennas.forEach(ant => {
                 createAntenna(ant);
                 stats.antennas++;
                 stats.components++;
             });
-            
+
             COMPONENTS_DATA.switches.forEach(sw => {
                 createSwitch(sw);
                 stats.components++;
             });
-            
+
             COMPONENTS_DATA.passives.forEach(p => {
                 createPassive(p);
                 stats.components++;
             });
-            
+
             COMPONENTS_DATA.shields.forEach(sh => {
                 createShield(sh);
                 stats.components++;
@@ -1109,15 +1177,15 @@
             const height = data.type === 'usb' ? 3 : (data.type === 'camera' ? 2 : (data.type === 'crystal' || data.type === 'ferrite' ? 0.5 : 1.5));
             const isBottom = data.face === 'bottom';
             const yMultiplier = isBottom ? -1 : 1;
-            
+
             const group = new THREE.Group();
-            
+
             const bodyMaterial = new THREE.MeshStandardMaterial({
                 color: data.type === 'crystal' ? 0x888888 : (data.type === 'ferrite' ? 0x444444 : COLORS.connectorPlastic),
                 roughness: 0.6,
                 metalness: data.type === 'crystal' ? 0.8 : 0.2
             });
-            
+
             const body = new THREE.Mesh(
                 new THREE.BoxGeometry(width, height, depth),
                 bodyMaterial
@@ -1125,14 +1193,14 @@
             body.position.y = yMultiplier * (height / 2 + BOARD_THICKNESS / 2);
             body.castShadow = true;
             group.add(body);
-            
+
             if ((data.type === 'fpc' || data.type === 'btb') && !isBottom) {
                 const contactMaterial = new THREE.MeshStandardMaterial({
                     color: COLORS.gold,
                     roughness: 0.2,
                     metalness: 0.9
                 });
-                
+
                 const pinWidth = width / (data.pins || 20);
                 for (let i = 0; i < (data.pins || 20); i++) {
                     const contact = new THREE.Mesh(
@@ -1144,14 +1212,14 @@
                     group.add(contact);
                 }
             }
-            
+
             if (data.type === 'usb') {
                 const metalMaterial = new THREE.MeshStandardMaterial({
                     color: COLORS.silver,
                     roughness: 0.3,
                     metalness: 0.9
                 });
-                
+
                 const shell = new THREE.Mesh(
                     new THREE.BoxGeometry(width * 0.9, height * 0.8, depth * 1.2),
                     metalMaterial
@@ -1160,7 +1228,7 @@
                 shell.position.z = depth * 0.1;
                 group.add(shell);
             }
-            
+
             // Crystal oscillator marking
             if (data.type === 'crystal') {
                 const markMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
@@ -1172,17 +1240,17 @@
                 mark.position.y = yMultiplier * (height + BOARD_THICKNESS / 2 + 0.01);
                 group.add(mark);
             }
-            
+
             group.position.set(pos.x, 0, pos.z);
-            group.userData = { 
-                id: data.id, 
-                type: 'connector', 
+            group.userData = {
+                id: data.id,
+                type: 'connector',
                 desc: data.desc,
                 zOffset: data.zOffset,
                 face: data.face || 'top',
                 baseY: 0
             };
-            
+
             mainGroup.add(group);
             componentMeshes.push(group);
         }
@@ -1193,28 +1261,28 @@
             const depth = (data.h / 100) * BOARD_HEIGHT;
             const isBottom = data.face === 'bottom';
             const yMultiplier = isBottom ? -1 : 1;
-            
+
             // Hauteur variable selon le type et l'ID
             let height = 0.8;
             if (data.id === 'U1500' || data.id === 'U1') height = 1.5;
             else if (data.id === 'DU1') height = 1.2;
             else if (data.id === 'U700') height = 1.8;
             else if (data.type === 'diode') height = 0.4;
-            
+
             const group = new THREE.Group();
-            
+
             // Couleur différente pour certains ICs
             let icColor = COLORS.ic;
             if (data.id === 'DU1') icColor = 0x1a1a2a; // RAM plus foncée
             if (data.id === 'U700') icColor = 0x2a2a3a; // Modem légèrement différent
             if (data.type === 'diode') icColor = 0x222222;
-            
+
             const icMaterial = new THREE.MeshStandardMaterial({
                 color: icColor,
                 roughness: 0.4,
                 metalness: 0.3
             });
-            
+
             const body = new THREE.Mesh(
                 new THREE.BoxGeometry(width, height, depth),
                 icMaterial
@@ -1222,7 +1290,7 @@
             body.position.y = yMultiplier * (height / 2 + BOARD_THICKNESS / 2);
             body.castShadow = true;
             group.add(body);
-            
+
             const markMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
             const mark = new THREE.Mesh(
                 new THREE.PlaneGeometry(width * 0.6, depth * 0.15),
@@ -1231,7 +1299,7 @@
             mark.rotation.x = isBottom ? Math.PI / 2 : -Math.PI / 2;
             mark.position.y = yMultiplier * (height + BOARD_THICKNESS / 2 + 0.01);
             group.add(mark);
-            
+
             const dotMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
             const dot = new THREE.Mesh(
                 new THREE.CircleGeometry(Math.min(0.8, width * 0.1), 16),
@@ -1240,18 +1308,18 @@
             dot.rotation.x = isBottom ? Math.PI / 2 : -Math.PI / 2;
             dot.position.set(-width / 2 + Math.min(2, width * 0.2), yMultiplier * (height + BOARD_THICKNESS / 2 + 0.02), -depth / 2 + Math.min(2, depth * 0.2));
             group.add(dot);
-            
+
             if (data.type === 'bga') {
                 const ballMaterial = new THREE.MeshStandardMaterial({
                     color: COLORS.copperDark,
                     roughness: 0.3,
                     metalness: 0.8
                 });
-                
+
                 const ballSpacing = 1.2;
                 const ballsX = Math.floor(width / ballSpacing) - 2;
                 const ballsZ = Math.floor(depth / ballSpacing) - 2;
-                
+
                 for (let i = 0; i < ballsX; i++) {
                     for (let j = 0; j < ballsZ; j++) {
                         if (Math.random() > 0.3) {
@@ -1269,17 +1337,17 @@
                     }
                 }
             }
-            
+
             group.position.set(pos.x, 0, pos.z);
-            group.userData = { 
-                id: data.id, 
-                type: 'ic', 
+            group.userData = {
+                id: data.id,
+                type: 'ic',
                 desc: data.desc,
                 zOffset: data.zOffset,
                 face: data.face || 'top',
                 baseY: 0
             };
-            
+
             mainGroup.add(group);
             componentMeshes.push(group);
         }
@@ -1288,44 +1356,44 @@
             const pos = percentToCoord(data.x, data.y);
             const width = (data.w / 100) * BOARD_WIDTH;
             const depth = (data.h / 100) * BOARD_HEIGHT;
-            
+
             const group = new THREE.Group();
-            
+
             const antMaterial = new THREE.MeshStandardMaterial({
                 color: COLORS.antenna,
                 roughness: 0.5,
                 metalness: 0.6
             });
-            
+
             const base = new THREE.Mesh(
                 new THREE.BoxGeometry(width, 0.5, depth),
                 antMaterial
             );
             base.position.y = 0.25 + BOARD_THICKNESS / 2;
             group.add(base);
-            
+
             const coaxMaterial = new THREE.MeshStandardMaterial({
                 color: COLORS.gold,
                 roughness: 0.2,
                 metalness: 0.9
             });
-            
+
             const coax = new THREE.Mesh(
                 new THREE.CylinderGeometry(0.4, 0.4, 0.8, 16),
                 coaxMaterial
             );
             coax.position.y = 0.9 + BOARD_THICKNESS / 2;
             group.add(coax);
-            
+
             group.position.set(pos.x, 0, pos.z);
-            group.userData = { 
-                id: data.id, 
-                type: 'antenna', 
+            group.userData = {
+                id: data.id,
+                type: 'antenna',
                 desc: data.desc,
                 zOffset: data.zOffset,
                 baseY: 0
             };
-            
+
             mainGroup.add(group);
             componentMeshes.push(group);
         }
@@ -1334,14 +1402,14 @@
             const pos = percentToCoord(data.x, data.y);
             const width = (data.w / 100) * BOARD_WIDTH;
             const depth = (data.h / 100) * BOARD_HEIGHT;
-            
+
             const group = new THREE.Group();
-            
+
             const bodyMaterial = new THREE.MeshStandardMaterial({
                 color: 0x444444,
                 roughness: 0.5
             });
-            
+
             const body = new THREE.Mesh(
                 new THREE.BoxGeometry(width, 1.2, depth),
                 bodyMaterial
@@ -1349,29 +1417,29 @@
             body.position.y = 0.6 + BOARD_THICKNESS / 2;
             body.castShadow = true;
             group.add(body);
-            
+
             const actMaterial = new THREE.MeshStandardMaterial({
                 color: 0x888888,
                 roughness: 0.3,
                 metalness: 0.5
             });
-            
+
             const actuator = new THREE.Mesh(
                 new THREE.BoxGeometry(width * 0.4, 0.5, depth * 0.6),
                 actMaterial
             );
             actuator.position.set(width * 0.2, 1.5 + BOARD_THICKNESS / 2, 0);
             group.add(actuator);
-            
+
             group.position.set(pos.x, 0, pos.z);
-            group.userData = { 
-                id: data.id, 
-                type: 'switch', 
+            group.userData = {
+                id: data.id,
+                type: 'switch',
                 desc: data.desc,
                 zOffset: data.zOffset,
                 baseY: 0
             };
-            
+
             mainGroup.add(group);
             componentMeshes.push(group);
         }
@@ -1382,19 +1450,19 @@
             const depth = (data.h / 100) * BOARD_HEIGHT;
             const isBottom = data.face === 'bottom';
             const yMultiplier = isBottom ? -1 : 1;
-            
+
             let color = COLORS.resistor;
             if (data.type === 'capacitor') color = COLORS.capacitor;
             if (data.type === 'inductor') color = 0x2a4a3a;
-            
+
             const group = new THREE.Group();
-            
+
             const material = new THREE.MeshStandardMaterial({
                 color: color,
                 roughness: 0.6,
                 metalness: 0.2
             });
-            
+
             const bodyHeight = data.type === 'inductor' ? 0.5 : 0.3;
             const body = new THREE.Mesh(
                 new THREE.BoxGeometry(width, bodyHeight, depth),
@@ -1402,37 +1470,37 @@
             );
             body.position.y = yMultiplier * (bodyHeight / 2 + BOARD_THICKNESS / 2);
             group.add(body);
-            
+
             const termMaterial = new THREE.MeshStandardMaterial({
                 color: COLORS.silver,
                 roughness: 0.3,
                 metalness: 0.8
             });
-            
+
             const term1 = new THREE.Mesh(
                 new THREE.BoxGeometry(width * 0.2, bodyHeight + 0.05, depth),
                 termMaterial
             );
             term1.position.set(-width * 0.4, yMultiplier * ((bodyHeight + 0.05) / 2 + BOARD_THICKNESS / 2), 0);
             group.add(term1);
-            
+
             const term2 = new THREE.Mesh(
                 new THREE.BoxGeometry(width * 0.2, bodyHeight + 0.05, depth),
                 termMaterial
             );
             term2.position.set(width * 0.4, yMultiplier * ((bodyHeight + 0.05) / 2 + BOARD_THICKNESS / 2), 0);
             group.add(term2);
-            
+
             group.position.set(pos.x, 0, pos.z);
-            group.userData = { 
-                id: data.id, 
-                type: 'passive', 
+            group.userData = {
+                id: data.id,
+                type: 'passive',
                 desc: `${data.type} SMD`,
                 zOffset: data.zOffset,
                 face: data.face || 'top',
                 baseY: 0
             };
-            
+
             mainGroup.add(group);
             componentMeshes.push(group);
         }
@@ -1441,25 +1509,25 @@
             const pos = percentToCoord(data.x, data.y);
             const width = (data.w / 100) * BOARD_WIDTH;
             const depth = (data.h / 100) * BOARD_HEIGHT;
-            
+
             const group = new THREE.Group();
-            
+
             const shieldMaterial = new THREE.MeshStandardMaterial({
                 color: COLORS.shield,
                 roughness: 0.4,
                 metalness: 0.7
             });
-            
+
             const wallThickness = 0.3;
             const height = 2;
-            
+
             const walls = [
                 { x: 0, z: depth / 2 - wallThickness / 2, w: width, d: wallThickness },
                 { x: 0, z: -depth / 2 + wallThickness / 2, w: width, d: wallThickness },
                 { x: width / 2 - wallThickness / 2, z: 0, w: wallThickness, d: depth },
                 { x: -width / 2 + wallThickness / 2, z: 0, w: wallThickness, d: depth }
             ];
-            
+
             walls.forEach(w => {
                 const wall = new THREE.Mesh(
                     new THREE.BoxGeometry(w.w, height, w.d),
@@ -1469,7 +1537,7 @@
                 wall.castShadow = true;
                 group.add(wall);
             });
-            
+
             const lid = new THREE.Mesh(
                 new THREE.BoxGeometry(width, 0.2, depth),
                 shieldMaterial
@@ -1477,16 +1545,16 @@
             lid.position.y = height + BOARD_THICKNESS / 2;
             lid.castShadow = true;
             group.add(lid);
-            
+
             group.position.set(pos.x, 0, pos.z);
-            group.userData = { 
-                id: data.id, 
-                type: 'shield', 
+            group.userData = {
+                id: data.id,
+                type: 'shield',
                 desc: data.desc,
                 zOffset: data.zOffset,
                 baseY: 0
             };
-            
+
             mainGroup.add(group);
             componentMeshes.push(group);
         }
@@ -1500,17 +1568,17 @@
                 ...COMPONENTS_DATA.passives.map(c => ({ ...c, category: 'passive' })),
                 ...COMPONENTS_DATA.shields.map(c => ({ ...c, category: 'other' }))
             ];
-            
+
             // Séparer par face
             const topComponents = allComponents.filter(c => c.face !== 'bottom');
             const bottomComponents = allComponents.filter(c => c.face === 'bottom');
-            
+
             // Header TOP
             const topHeader = document.createElement('div');
             topHeader.style.cssText = 'color: #00ff88; font-size: 10px; padding: 5px; border-bottom: 1px solid #00ff88; margin-bottom: 5px; font-weight: bold;';
             topHeader.textContent = `▲ TOP (${topComponents.length})`;
             componentList.appendChild(topHeader);
-            
+
             topComponents.forEach((comp, index) => {
                 const item = document.createElement('div');
                 item.className = 'component-list-item';
@@ -1522,13 +1590,13 @@
                 });
                 componentList.appendChild(item);
             });
-            
+
             // Header BOTTOM
             const bottomHeader = document.createElement('div');
             bottomHeader.style.cssText = 'color: #ff8800; font-size: 10px; padding: 5px; border-bottom: 1px solid #ff8800; margin: 10px 0 5px 0; font-weight: bold;';
             bottomHeader.textContent = `▼ BOTTOM (${bottomComponents.length})`;
             componentList.appendChild(bottomHeader);
-            
+
             bottomComponents.forEach((comp, index) => {
                 const item = document.createElement('div');
                 item.className = 'component-list-item';
@@ -1557,34 +1625,34 @@
                     lastY = e.clientY;
                 }
             });
-            
+
             renderer.domElement.addEventListener('mousemove', (e) => {
                 if (isRotating && !isIsolated) {
                     const deltaX = e.clientX - lastX;
                     const deltaY = e.clientY - lastY;
-                    
+
                     spherical.theta -= deltaX * 0.01;
                     spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi - deltaY * 0.01));
                     updateCamera();
-                    
+
                     lastX = e.clientX;
                     lastY = e.clientY;
                 }
-                
+
                 // Hover detection
                 if (!isIsolated) {
                     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
                     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-                    
+
                     raycaster.setFromCamera(mouse, camera);
                     const intersects = raycaster.intersectObjects(componentMeshes, true);
-                    
+
                     if (intersects.length > 0) {
                         let obj = intersects[0].object;
                         while (obj.parent && !obj.userData.id) {
                             obj = obj.parent;
                         }
-                        
+
                         if (obj.userData.id) {
                             hoveredComponent = obj;
                             hoverInfo.textContent = obj.userData.id;
@@ -1592,7 +1660,7 @@
                             hoverInfo.style.top = (e.clientY - 10) + 'px';
                             hoverInfo.classList.add('visible');
                             renderer.domElement.style.cursor = 'pointer';
-                            
+
                             document.querySelectorAll('.component-list-item').forEach(item => {
                                 item.classList.toggle('active', item.dataset.id === obj.userData.id);
                             });
@@ -1607,38 +1675,38 @@
                     }
                 }
             });
-            
+
             renderer.domElement.addEventListener('mouseup', () => {
                 isRotating = false;
             });
-            
+
             renderer.domElement.addEventListener('mouseleave', () => {
                 isRotating = false;
                 hoverInfo.classList.remove('visible');
             });
-            
+
             // Click to isolate
             renderer.domElement.addEventListener('click', (e) => {
                 if (isIsolated || isRotating) return;
-                
+
                 mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
                 mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-                
+
                 raycaster.setFromCamera(mouse, camera);
                 const intersects = raycaster.intersectObjects(componentMeshes, true);
-                
+
                 if (intersects.length > 0) {
                     let obj = intersects[0].object;
                     while (obj.parent && !obj.userData.id) {
                         obj = obj.parent;
                     }
-                    
+
                     if (obj.userData.id) {
                         isolateComponent(obj);
                     }
                 }
             });
-            
+
             // Wheel for deploy/zoom
             window.addEventListener('wheel', (e) => {
                 e.preventDefault();
@@ -1649,7 +1717,7 @@
                     deployProgress = Math.max(0, Math.min(1, deployProgress + delta));
                 }
             }, { passive: false });
-            
+
             // Isolation controls
             isolatedContainer.addEventListener('mousedown', (e) => {
                 if (!isIsolated) return;
@@ -1658,10 +1726,10 @@
                 lastY = e.clientY;
                 isolatedContainer.style.cursor = 'grabbing';
             });
-            
+
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging || !isIsolated) return;
-                
+
                 const dx = e.clientX - lastX;
                 const dy = e.clientY - lastY;
                 velocityX = dx * 0.5;
@@ -1670,20 +1738,20 @@
                 isoRotX -= velocityY;
                 lastX = e.clientX;
                 lastY = e.clientY;
-                
+
                 throwZone.classList.toggle('drag-over', e.clientX < window.innerWidth * 0.2);
             });
-            
+
             document.addEventListener('mouseup', (e) => {
                 if (!isDragging) return;
                 isDragging = false;
                 isolatedContainer.style.cursor = 'grab';
-                
+
                 if (e.clientX < window.innerWidth * 0.2) {
                     restoreComponent();
                 }
             });
-            
+
             // Keyboard
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && isIsolated) {
@@ -1700,14 +1768,14 @@
                     updateCamera();
                 }
             });
-            
+
             // Resize
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
             });
-            
+
             updateCamera();
         }
 
@@ -1716,7 +1784,7 @@
             document.getElementById('btnWireframe').addEventListener('click', () => {
                 window.location.href = 'pinephone-wireframe-complete.html';
             });
-            
+
             document.getElementById('btnSolid').addEventListener('click', () => {
                 // Already on solid view
             });
@@ -1730,12 +1798,12 @@
             isoScale = 1;
             velocityX = 0;
             velocityY = 0;
-            
+
             // Clone component
             isolatedClone = component.clone();
             isolatedClone.position.set(0, 0, 0);
             isoPivot.add(isolatedClone);
-            
+
             // Dim original
             component.traverse(child => {
                 if (child.material) {
@@ -1745,23 +1813,23 @@
                     child.material.opacity = 0.15;
                 }
             });
-            
+
             // Show UI
             document.body.classList.add('isolated');
             isolationZone.classList.add('active');
             isolationInfo.classList.add('visible');
             throwZone.classList.add('active');
-            
+
             elementName.textContent = component.userData.id;
             const faceLabel = component.userData.face === 'bottom' ? ' [BOTTOM]' : ' [TOP]';
             elementDesc.textContent = (component.userData.desc || `Type: ${component.userData.type}`) + faceLabel;
-            
+
             hoverInfo.classList.remove('visible');
         }
 
         function restoreComponent() {
             if (!isIsolated || !isolatedComponent) return;
-            
+
             // Restore opacity
             isolatedComponent.traverse(child => {
                 if (child.material && child.userData.originalOpacity !== undefined) {
@@ -1771,20 +1839,20 @@
                     }
                 }
             });
-            
+
             // Remove clone
             if (isolatedClone) {
                 isoPivot.remove(isolatedClone);
                 isolatedClone = null;
             }
-            
+
             // Hide UI
             document.body.classList.remove('isolated');
             isolationZone.classList.remove('active');
             isolationInfo.classList.remove('visible');
             throwZone.classList.remove('active');
             throwZone.classList.remove('drag-over');
-            
+
             isIsolated = false;
             isolatedComponent = null;
         }
@@ -1799,17 +1867,17 @@
                     mesh.position.y = targetY;
                 }
             });
-            
+
             document.getElementById('deployFill').style.height = (deployProgress * 100) + '%';
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            
+
             updateDeployment();
-            
+
             renderer.render(scene, camera);
-            
+
             // Isolation animation
             if (isIsolated && isolatedClone) {
                 if (!isDragging) {
@@ -1818,11 +1886,11 @@
                     isoRotY += velocityX;
                     isoRotX -= velocityY;
                 }
-                
+
                 isoPivot.rotation.x = isoRotX * Math.PI / 180;
                 isoPivot.rotation.y = isoRotY * Math.PI / 180;
                 isoPivot.scale.setScalar(isoScale);
-                
+
                 isoRenderer.render(isoScene, isoCamera);
             }
         }
@@ -1830,4 +1898,5 @@
         init();
     </script>
 </body>
+
 </html>

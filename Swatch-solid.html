@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWATCH - Vue Éclatée 3D - SOLID</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a2e; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; }
+        
+        #loading {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 1000; transition: opacity 0.5s ease;
+        }
+        #loading.hidden { opacity: 0; pointer-events: none; }
+        #loading h1 { color: #e94560; font-size: 2.5rem; letter-spacing: 8px; margin-bottom: 5px; }
+        #loading h2 { color: #0f3460; font-size: 1rem; letter-spacing: 3px; margin-bottom: 30px; }
+        .loader { width: 300px; height: 4px; background: rgba(233,69,96,0.2); border-radius: 2px; overflow: hidden; }
+        .loader-bar { height: 100%; background: linear-gradient(90deg, #e94560, #0f3460); width: 0%; transition: width 0.3s; }
+        
+        #info-panel {
+            position: fixed; top: 20px; right: 20px;
+            background: rgba(22, 33, 62, 0.95); border: 1px solid #0f3460;
+            border-radius: 8px; padding: 15px; min-width: 200px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        #info-panel h1 { color: #e94560; font-size: 1.1rem; margin-bottom: 3px; letter-spacing: 2px; }
+        #info-panel .sub { color: #0f3460; font-size: 0.7rem; margin-bottom: 12px; }
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .stat { background: rgba(15,52,96,0.3); padding: 8px; border-radius: 4px; text-align: center; }
+        .stat-label { font-size: 0.6rem; color: #8892b0; text-transform: uppercase; }
+        .stat-value { font-size: 1.1rem; color: #e94560; font-weight: bold; }
+        
+        #controls {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(22,33,62,0.95); padding: 10px 20px; border-radius: 20px;
+            font-size: 0.7rem; color: #8892b0; border: 1px solid #0f3460;
+        }
+        #controls kbd { background: #e94560; color: #fff; padding: 2px 6px; border-radius: 3px; margin: 0 2px; }
+        
+        .buttons-container { position: fixed; top: 20px; left: 20px; display: flex; gap: 8px; }
+        .btn {
+            background: rgba(22,33,62,0.95); border: 1px solid #0f3460; color: #ccd6f6;
+            padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; transition: all 0.2s;
+        }
+        .btn:hover { background: #e94560; color: #fff; border-color: #e94560; }
+        .btn.active { background: #e94560; color: #fff; border-color: #e94560; }
+        
+        .legend {
+            position: fixed; left: 20px; top: 85px;
+            background: rgba(22,33,62,0.95); border: 1px solid #0f3460;
+            border-radius: 8px; padding: 12px; font-size: 0.55rem;
+            max-height: 70vh; overflow-y: auto; width: 160px;
+        }
+        .legend::-webkit-scrollbar { width: 4px; }
+        .legend::-webkit-scrollbar-thumb { background: #e94560; border-radius: 2px; }
+        .legend h3 { color: #e94560; margin-bottom: 8px; font-size: 0.7rem; letter-spacing: 1px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; margin: 4px 0; color: #8892b0; }
+        .legend-color { width: 14px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+        
+        .scrollbars { position: fixed; pointer-events: none; opacity: 0; transition: opacity 0.15s; }
+        .scrollbars.visible { opacity: 1; }
+        .scrollbar-v {
+            position: absolute; width: 10px; height: 90px;
+            background: rgba(233,69,96,0.15); border: 1px solid rgba(233,69,96,0.4);
+            border-radius: 5px; pointer-events: auto; cursor: ns-resize;
+        }
+        .scrollbar-v .thumb {
+            position: absolute; width: 100%; height: 26px;
+            background: linear-gradient(to bottom, #e94560, #0f3460);
+            border-radius: 5px; top: 50%; transform: translateY(-50%);
+        }
+        .scrollbar-h {
+            position: absolute; width: 90px; height: 10px;
+            background: rgba(233,69,96,0.15); border: 1px solid rgba(233,69,96,0.4);
+            border-radius: 5px; pointer-events: auto; cursor: ew-resize;
+        }
+        .scrollbar-h .thumb {
+            position: absolute; height: 100%; width: 26px;
+            background: linear-gradient(to right, #e94560, #0f3460);
+            border-radius: 5px; left: 50%; transform: translateX(-50%);
+        }
+        
+        .float-info {
+            position: fixed; background: rgba(22,33,62,0.98); color: #ccd6f6;
+            padding: 8px 12px; border-radius: 4px; font-size: 0.7rem;
+            pointer-events: none; opacity: 0; transition: opacity 0.15s; border: 1px solid #0f3460;
+        }
+        .float-info.visible { opacity: 1; }
+        .float-info .name { color: #e94560; font-weight: bold; }
+        .float-info .type { color: #0f3460; font-size: 0.6rem; margin-top: 2px; }
+        
+        .compat-status {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            padding: 12px 25px; border-radius: 6px; font-size: 1rem; font-weight: bold;
+            pointer-events: none; opacity: 0; transition: opacity 0.15s; letter-spacing: 2px;
+        }
+        .compat-status.visible { opacity: 1; }
+        .compat-status.compatible { background: rgba(16,185,129,0.95); color: #fff; }
+        .compat-status.incompatible { background: rgba(239,68,68,0.95); color: #fff; }
+        .compat-status.floating { background: rgba(245,158,11,0.95); color: #fff; }
+        
+        .hover-tip {
+            position: fixed; background: rgba(22,33,62,0.95); color: #e94560;
+            padding: 4px 8px; border-radius: 3px; font-size: 0.65rem;
+            pointer-events: none; opacity: 0; transition: opacity 0.1s; border: 1px solid #0f3460;
+        }
+        .hover-tip.visible { opacity: 1; }
+        
+        body.dragging { cursor: grabbing !important; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="loading">
+        <h1>SWATCH</h1>
+        <h2>Vue Éclatée • 28 Composants</h2>
+        <div class="loader"><div class="loader-bar" id="loader-bar"></div></div>
+    </div>
+    
+    <div class="scrollbars" id="scrollbars">
+        <div class="scrollbar-v" id="scrollV"><div class="thumb" id="thumbV"></div></div>
+        <div class="scrollbar-h" id="scrollH"><div class="thumb" id="thumbH"></div></div>
+    </div>
+    
+    <div class="float-info" id="floatInfo">
+        <div class="name" id="floatName">--</div>
+        <div class="type" id="floatType">--</div>
+    </div>
+    
+    <div class="compat-status" id="compatStatus">COMPATIBLE</div>
+    <div class="hover-tip" id="hoverTip"></div>
+    
+    <div id="info-panel">
+        <h1>SWATCH</h1>
+        <p class="sub">SOLID MODE • Swiss Made</p>
+        <div class="stats">
+            <div class="stat"><div class="stat-label">Composants</div><div class="stat-value" id="compCount">0</div></div>
+            <div class="stat"><div class="stat-label">Connectés</div><div class="stat-value" id="connCount">0</div></div>
+            <div class="stat"><div class="stat-label">Déployé</div><div class="stat-value" id="deployPct">0%</div></div>
+            <div class="stat"><div class="stat-label">Type</div><div class="stat-value" style="font-size:0.6rem">Quartz</div></div>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <kbd>↑</kbd> Exploser <kbd>↓</kbd> Assembler <kbd>DRAG</kbd> Déplacer <kbd>R</kbd> Reset <kbd>T</kbd> Vue côté
+    </div>
+    
+    <div class="legend">
+        <h3>COMPOSANTS</h3>
+        <div class="legend-item"><div class="legend-color" style="background:#a8d8ea"></div>Verre</div>
+        <div class="legend-item"><div class="legend-color" style="background:#c0c0c0"></div>Aiguilles</div>
+        <div class="legend-item"><div class="legend-color" style="background:#f5f5f5"></div>Cadran</div>
+        <div class="legend-item"><div class="legend-color" style="background:#d4af37"></div>Roues/Engrenages</div>
+        <div class="legend-item"><div class="legend-color" style="background:#cd7f32"></div>Bobine/Stator</div>
+        <div class="legend-item"><div class="legend-color" style="background:#2a2a2a"></div>Boîtier</div>
+        <div class="legend-item"><div class="legend-color" style="background:#4a90d9"></div>Module électronique</div>
+        <div class="legend-item"><div class="legend-color" style="background:#50c878"></div>Pile</div>
+    </div>
+    
+    <div class="buttons-container">
+        <button class="btn" id="btnReset">RESET</button>
+        <button class="btn active" id="btnSolid">SOLID</button>
+        <button class="btn" id="btnWire">WIREFRAME</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+    // =============================================
+    // SWATCH WATCH - EXPLODED VIEW - SOLID MODE
+    // 28 composants fidèles au schéma
+    // =============================================
+    
+    const COLORS = {
+        glass: 0xa8d8ea, glassEdge: 0x88b8ca,
+        needle: 0xc0c0c0, needleCenter: 0x2a2a2a,
+        dial: 0xf5f5f5, dialMarks: 0x1a1a1a,
+        wheel: 0xd4af37, wheelAxis: 0x8b7355,
+        coil: 0xcd7f32, stator: 0x8b4513,
+        case: 0x2a2a2a, caseSide: 0x3a3a3a,
+        module: 0x4a90d9, moduleChip: 0x1a3a5a,
+        battery: 0x50c878, batteryTop: 0xc0c0c0,
+        plate: 0x888888, spring: 0xaaaaaa,
+        ok: 0x10b981, bad: 0xef4444, float: 0xf59e0b
+    };
+    
+    // Composants de haut en bas (Y décroissant)
+    const COMPONENTS = [
+        { id: 'verre', name: 'Verre', type: 'glass', y: 14, radius: 1.8, height: 0.15 },
+        { id: 'aig_sec', name: 'Aiguille des secondes', type: 'needle', y: 13, length: 1.5, width: 0.03 },
+        { id: 'aig_min', name: 'Aiguille des minutes', type: 'needle', y: 12.5, length: 1.3, width: 0.05 },
+        { id: 'aig_heure', name: 'Aiguille des heures', type: 'needle', y: 12, length: 0.9, width: 0.07 },
+        { id: 'cadran', name: 'Cadran', type: 'dial', y: 11, radius: 1.75, height: 0.08 },
+        { id: 'clavette', name: 'Clavette', type: 'small', y: 10.2, radius: 0.15, height: 0.1 },
+        { id: 'indic_jour', name: 'Indicateur du jour', type: 'indicator', y: 9.5, radius: 0.5, height: 0.06 },
+        { id: 'plaque_maintien', name: 'Plaque de maintien', type: 'plate', y: 8.8, radius: 1.5, height: 0.1 },
+        { id: 'indic_quantieme', name: 'Indicateur de quantième', type: 'ring', y: 8, radius: 1.6, height: 0.08 },
+        { id: 'roue_entrainement', name: 'Roue entraîneuse', type: 'wheel', y: 7.2, radius: 0.4, height: 0.12 },
+        { id: 'chaussee', name: 'Chaussée', type: 'wheel', y: 6.6, radius: 0.25, height: 0.25 },
+        { id: 'cannon', name: 'Cannon', type: 'wheel', y: 6, radius: 0.2, height: 0.3 },
+        { id: 'minuterie', name: 'Minuterie', type: 'wheel', y: 5.4, radius: 0.35, height: 0.1 },
+        { id: 'renvoi_minuterie', name: 'Renvoi de roue de minuterie', type: 'wheel', y: 4.8, radius: 0.3, height: 0.1 },
+        { id: 'stator', name: 'Stator', type: 'stator', y: 4.2, radius: 0.5, height: 0.15 },
+        { id: 'rotor', name: 'Rotor', type: 'rotor', y: 3.6, radius: 0.35, height: 0.08 },
+        { id: 'roue_seconde', name: 'Roue de seconde', type: 'wheel', y: 3, radius: 0.3, height: 0.1 },
+        { id: 'roue_intermediaire', name: 'Roue intermédiaire', type: 'wheel', y: 2.4, radius: 0.25, height: 0.1 },
+        { id: 'bobine', name: 'Bobine', type: 'coil', y: 1.8, radius: 0.4, height: 0.25 },
+        { id: 'tenon_bascule', name: 'Tenon de bascule', type: 'small', y: 1.3, radius: 0.08, height: 0.15 },
+        { id: 'bascule', name: 'Bascule', type: 'lever', y: 0.8, length: 0.6, width: 0.12 },
+        { id: 'module_elec', name: 'Module électronique', type: 'module', y: 0, radius: 1.4, height: 0.2 },
+        { id: 'tenon_tirette', name: 'Tenon de tirette', type: 'small', y: -0.6, radius: 0.06, height: 0.12 },
+        { id: 'tirette', name: 'Tirette', type: 'lever', y: -1.2, length: 0.8, width: 0.1 },
+        { id: 'tige', name: 'Tige', type: 'stem', y: -2, length: 1.2, radius: 0.08 },
+        { id: 'boite', name: 'Boîte', type: 'case', y: -3.5, radius: 2, height: 0.8 },
+        { id: 'pile', name: 'Pile', type: 'battery', y: -5, radius: 0.9, height: 0.25 },
+        { id: 'couvercle_pile', name: 'Couvercle de pile', type: 'cover', y: -6, radius: 1.9, height: 0.12 }
+    ];
+    
+    let scene, camera, renderer, raycaster, mouse;
+    let componentMeshes = [], footprintMeshes = [], mainGroup;
+    let deployProgress = 0, isSnapping = false;
+    let spherical = { theta: 0.3, phi: Math.PI / 2.5, radius: 25 };
+    let target = new THREE.Vector3(0, 4, 0);
+    let isRotating = false, lastX = 0, lastY = 0;
+    let isDragging = false, draggedComp = null, dragPlane = null, dragOffset = new THREE.Vector3();
+    let hoveredComp = null, isScrollDrag = false, activeScroll = null;
+    let scrollStartX = 0, scrollStartY = 0;
+    let compStates = new Map(), fpByComp = new Map();
+    let hideTimer = null, scrollLocked = false;
+    let currentCompat = null, nearestFP = null;
+    
+    const scrollbars = document.getElementById('scrollbars');
+    const scrollV = document.getElementById('scrollV');
+    const scrollH = document.getElementById('scrollH');
+    const thumbV = document.getElementById('thumbV');
+    const thumbH = document.getElementById('thumbH');
+    const floatInfo = document.getElementById('floatInfo');
+    const floatName = document.getElementById('floatName');
+    const floatType = document.getElementById('floatType');
+    const hoverTip = document.getElementById('hoverTip');
+    const compatStatus = document.getElementById('compatStatus');
+    
+    function init() {
+        updateLoader(10);
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+        updateCamera();
+        
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        updateLoader(25);
+        setupLights();
+        
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+        
+        mainGroup = new THREE.Group();
+        scene.add(mainGroup);
+        
+        updateLoader(45);
+        createComponents();
+        createFootprints();
+        
+        updateLoader(85);
+        setupControls();
+        
+        updateLoader(100);
+        setTimeout(() => document.getElementById('loading').classList.add('hidden'), 400);
+        
+        animate();
+        updateStats();
+    }
+    
+    function updateLoader(p) { document.getElementById('loader-bar').style.width = p + '%'; }
+    
+    function setupLights() {
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        
+        const key = new THREE.DirectionalLight(0xffffff, 0.8);
+        key.position.set(10, 20, 15);
+        key.castShadow = true;
+        key.shadow.mapSize.width = 2048;
+        key.shadow.mapSize.height = 2048;
+        scene.add(key);
+        
+        const fill = new THREE.DirectionalLight(0x4a9eff, 0.3);
+        fill.position.set(-10, 10, -10);
+        scene.add(fill);
+        
+        const rim = new THREE.DirectionalLight(0xffffff, 0.2);
+        rim.position.set(0, -10, 10);
+        scene.add(rim);
+    }
+    
+    function updateCamera() {
+        camera.position.x = target.x + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+        camera.position.y = target.y + spherical.radius * Math.cos(spherical.phi);
+        camera.position.z = target.z + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+        camera.lookAt(target);
+    }
+    
+    function createComponents() {
+        COMPONENTS.forEach(data => {
+            const mesh = createComponent(data);
+            componentMeshes.push(mesh);
+            mainGroup.add(mesh);
+        });
+    }
+    
+    function createComponent(data) {
+        const group = new THREE.Group();
+        let mesh;
+        
+        switch(data.type) {
+            case 'glass': mesh = createGlass(data); break;
+            case 'needle': mesh = createNeedle(data); break;
+            case 'dial': mesh = createDial(data); break;
+            case 'wheel': mesh = createWheel(data); break;
+            case 'plate': mesh = createPlate(data); break;
+            case 'ring': mesh = createRing(data); break;
+            case 'stator': mesh = createStator(data); break;
+            case 'rotor': mesh = createRotor(data); break;
+            case 'coil': mesh = createCoil(data); break;
+            case 'module': mesh = createModule(data); break;
+            case 'lever': mesh = createLever(data); break;
+            case 'stem': mesh = createStem(data); break;
+            case 'case': mesh = createCase(data); break;
+            case 'battery': mesh = createBattery(data); break;
+            case 'cover': mesh = createCover(data); break;
+            case 'indicator': mesh = createIndicator(data); break;
+            case 'small': mesh = createSmall(data); break;
+            default: mesh = createGeneric(data);
+        }
+        
+        group.add(mesh);
+        group.position.set(0, data.y, 0);
+        
+        const bounds = getBounds(data);
+        group.userData = {
+            id: data.id,
+            name: data.name,
+            type: data.type,
+            origPos: new THREE.Vector3(0, data.y, 0),
+            explodeDir: new THREE.Vector3(0, 1, 0),
+            explodeDist: 1.5,
+            isConnected: true,
+            bounds: bounds
+        };
+        
+        compStates.set(data.id, {
+            pos: group.position.clone(),
+            rot: group.rotation.clone(),
+            scale: group.scale.clone(),
+            rotX: 0, rotY: 0, cScale: 1
+        });
+        
+        return group;
+    }
+    
+    function getBounds(data) {
+        const r = data.radius || data.length || 0.5;
+        const h = data.height || 0.2;
+        return new THREE.Vector3(r * 2, h, r * 2);
+    }
+    
+    function createGlass(data) {
+        const g = new THREE.Group();
+        // Verre bombé
+        const glassGeo = new THREE.SphereGeometry(data.radius, 64, 32, 0, Math.PI * 2, 0, Math.PI / 6);
+        const glassMat = new THREE.MeshPhysicalMaterial({
+            color: COLORS.glass, transparent: true, opacity: 0.4,
+            roughness: 0.05, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.1
+        });
+        const glass = new THREE.Mesh(glassGeo, glassMat);
+        glass.scale.y = 0.3;
+        g.add(glass);
+        // Bord
+        const edgeGeo = new THREE.TorusGeometry(data.radius, 0.05, 16, 64);
+        const edgeMat = new THREE.MeshStandardMaterial({ color: COLORS.glassEdge, metalness: 0.6, roughness: 0.3 });
+        const edge = new THREE.Mesh(edgeGeo, edgeMat);
+        edge.rotation.x = Math.PI / 2;
+        edge.position.y = -0.02;
+        g.add(edge);
+        return g;
+    }
+    
+    function createNeedle(data) {
+        const g = new THREE.Group();
+        // Aiguille
+        const needleGeo = new THREE.BoxGeometry(data.width, 0.02, data.length);
+        const needleMat = new THREE.MeshStandardMaterial({ color: COLORS.needle, metalness: 0.8, roughness: 0.2 });
+        const needle = new THREE.Mesh(needleGeo, needleMat);
+        needle.position.z = data.length / 2 - 0.1;
+        g.add(needle);
+        // Centre
+        const centerGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.05, 16);
+        const centerMat = new THREE.MeshStandardMaterial({ color: COLORS.needleCenter });
+        const center = new THREE.Mesh(centerGeo, centerMat);
+        g.add(center);
+        return g;
+    }
+    
+    function createDial(data) {
+        const g = new THREE.Group();
+        // Cadran principal
+        const dialGeo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 64);
+        const dialMat = new THREE.MeshStandardMaterial({ color: COLORS.dial, roughness: 0.4 });
+        const dial = new THREE.Mesh(dialGeo, dialMat);
+        g.add(dial);
+        // Marqueurs d'heures
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const markGeo = new THREE.BoxGeometry(0.08, 0.02, 0.15);
+            const markMat = new THREE.MeshStandardMaterial({ color: COLORS.dialMarks });
+            const mark = new THREE.Mesh(markGeo, markMat);
+            mark.position.x = Math.sin(angle) * (data.radius - 0.15);
+            mark.position.z = Math.cos(angle) * (data.radius - 0.15);
+            mark.position.y = data.height / 2 + 0.01;
+            mark.rotation.y = -angle;
+            g.add(mark);
+        }
+        return g;
+    }
+    
+    function createWheel(data) {
+        const g = new THREE.Group();
+        // Roue principale
+        const wheelGeo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 32);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: COLORS.wheel, metalness: 0.7, roughness: 0.3 });
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        g.add(wheel);
+        // Axe central
+        const axisGeo = new THREE.CylinderGeometry(data.radius * 0.15, data.radius * 0.15, data.height * 2, 16);
+        const axisMat = new THREE.MeshStandardMaterial({ color: COLORS.wheelAxis, metalness: 0.5 });
+        const axis = new THREE.Mesh(axisGeo, axisMat);
+        g.add(axis);
+        // Dents (simplifiées)
+        const teeth = 12;
+        for (let i = 0; i < teeth; i++) {
+            const angle = (i / teeth) * Math.PI * 2;
+            const toothGeo = new THREE.BoxGeometry(0.02, data.height * 0.8, 0.04);
+            const tooth = new THREE.Mesh(toothGeo, wheelMat);
+            tooth.position.x = Math.sin(angle) * (data.radius + 0.01);
+            tooth.position.z = Math.cos(angle) * (data.radius + 0.01);
+            tooth.rotation.y = -angle;
+            g.add(tooth);
+        }
+        return g;
+    }
+    
+    function createPlate(data) {
+        const geo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 64);
+        const mat = new THREE.MeshStandardMaterial({ color: COLORS.plate, metalness: 0.4, roughness: 0.5 });
+        return new THREE.Mesh(geo, mat);
+    }
+    
+    function createRing(data) {
+        const geo = new THREE.TorusGeometry(data.radius, 0.08, 16, 64);
+        const mat = new THREE.MeshStandardMaterial({ color: COLORS.plate, metalness: 0.3 });
+        const ring = new THREE.Mesh(geo, mat);
+        ring.rotation.x = Math.PI / 2;
+        return ring;
+    }
+    
+    function createStator(data) {
+        const g = new THREE.Group();
+        const statorGeo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 6);
+        const statorMat = new THREE.MeshStandardMaterial({ color: COLORS.stator, metalness: 0.5, roughness: 0.4 });
+        g.add(new THREE.Mesh(statorGeo, statorMat));
+        // Pôles
+        for (let i = 0; i < 2; i++) {
+            const poleGeo = new THREE.BoxGeometry(data.radius * 0.4, data.height * 0.8, data.radius * 1.8);
+            const pole = new THREE.Mesh(poleGeo, statorMat);
+            pole.position.x = (i === 0 ? 1 : -1) * data.radius * 0.8;
+            g.add(pole);
+        }
+        return g;
+    }
+    
+    function createRotor(data) {
+        const g = new THREE.Group();
+        // Disque
+        const discGeo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 32);
+        const discMat = new THREE.MeshStandardMaterial({ color: COLORS.wheel, metalness: 0.8, roughness: 0.2 });
+        g.add(new THREE.Mesh(discGeo, discMat));
+        // Aimants
+        const magnetGeo = new THREE.BoxGeometry(data.radius * 0.5, data.height * 1.2, data.radius * 0.3);
+        const magnetMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const m1 = new THREE.Mesh(magnetGeo, magnetMat);
+        m1.position.x = data.radius * 0.5;
+        g.add(m1);
+        const m2 = new THREE.Mesh(magnetGeo, magnetMat);
+        m2.position.x = -data.radius * 0.5;
+        g.add(m2);
+        return g;
+    }
+    
+    function createCoil(data) {
+        const g = new THREE.Group();
+        // Noyau
+        const coreGeo = new THREE.CylinderGeometry(data.radius * 0.3, data.radius * 0.3, data.height, 16);
+        const coreMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        g.add(new THREE.Mesh(coreGeo, coreMat));
+        // Bobinage
+        const coilGeo = new THREE.TorusGeometry(data.radius * 0.6, data.radius * 0.25, 8, 32);
+        const coilMat = new THREE.MeshStandardMaterial({ color: COLORS.coil, metalness: 0.6, roughness: 0.4 });
+        const coil = new THREE.Mesh(coilGeo, coilMat);
+        coil.rotation.x = Math.PI / 2;
+        g.add(coil);
+        return g;
+    }
+    
+    function createModule(data) {
+        const g = new THREE.Group();
+        // PCB
+        const pcbGeo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 64);
+        const pcbMat = new THREE.MeshStandardMaterial({ color: COLORS.module, roughness: 0.6 });
+        g.add(new THREE.Mesh(pcbGeo, pcbMat));
+        // Quartz
+        const quartzGeo = new THREE.BoxGeometry(0.3, data.height * 1.5, 0.15);
+        const quartzMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.5 });
+        const quartz = new THREE.Mesh(quartzGeo, quartzMat);
+        quartz.position.set(0.4, 0, 0.3);
+        g.add(quartz);
+        // IC
+        const icGeo = new THREE.BoxGeometry(0.4, data.height * 1.2, 0.4);
+        const icMat = new THREE.MeshStandardMaterial({ color: COLORS.moduleChip });
+        const ic = new THREE.Mesh(icGeo, icMat);
+        ic.position.set(-0.3, 0, -0.2);
+        g.add(ic);
+        return g;
+    }
+    
+    function createLever(data) {
+        const geo = new THREE.BoxGeometry(data.width, 0.04, data.length);
+        const mat = new THREE.MeshStandardMaterial({ color: COLORS.spring, metalness: 0.6, roughness: 0.3 });
+        return new THREE.Mesh(geo, mat);
+    }
+    
+    function createStem(data) {
+        const g = new THREE.Group();
+        // Tige principale
+        const stemGeo = new THREE.CylinderGeometry(data.radius, data.radius, data.length, 16);
+        const stemMat = new THREE.MeshStandardMaterial({ color: COLORS.needle, metalness: 0.7, roughness: 0.3 });
+        const stem = new THREE.Mesh(stemGeo, stemMat);
+        stem.rotation.z = Math.PI / 2;
+        stem.position.x = data.length / 2;
+        g.add(stem);
+        // Couronne
+        const crownGeo = new THREE.CylinderGeometry(data.radius * 2, data.radius * 2, 0.15, 32);
+        const crown = new THREE.Mesh(crownGeo, stemMat);
+        crown.rotation.z = Math.PI / 2;
+        crown.position.x = data.length + 0.1;
+        g.add(crown);
+        return g;
+    }
+    
+    function createCase(data) {
+        const g = new THREE.Group();
+        // Boîtier principal (creux)
+        const outerGeo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 64);
+        const caseMat = new THREE.MeshStandardMaterial({ color: COLORS.case, roughness: 0.3, metalness: 0.2 });
+        g.add(new THREE.Mesh(outerGeo, caseMat));
+        // Creux intérieur
+        const innerGeo = new THREE.CylinderGeometry(data.radius * 0.9, data.radius * 0.9, data.height * 0.9, 64);
+        const innerMat = new THREE.MeshStandardMaterial({ color: COLORS.caseSide, side: THREE.BackSide });
+        const inner = new THREE.Mesh(innerGeo, innerMat);
+        inner.position.y = 0.05;
+        g.add(inner);
+        // Cornes (attaches bracelet)
+        const hornGeo = new THREE.BoxGeometry(0.2, 0.15, 0.6);
+        const hornMat = new THREE.MeshStandardMaterial({ color: COLORS.case, metalness: 0.3 });
+        const h1 = new THREE.Mesh(hornGeo, hornMat);
+        h1.position.set(data.radius + 0.1, 0, 0.8);
+        g.add(h1);
+        const h2 = h1.clone();
+        h2.position.z = -0.8;
+        g.add(h2);
+        const h3 = h1.clone();
+        h3.position.x = -(data.radius + 0.1);
+        g.add(h3);
+        const h4 = h3.clone();
+        h4.position.z = -0.8;
+        g.add(h4);
+        return g;
+    }
+    
+    function createBattery(data) {
+        const g = new THREE.Group();
+        // Corps de la pile
+        const bodyGeo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 32);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: COLORS.battery, metalness: 0.3, roughness: 0.5 });
+        g.add(new THREE.Mesh(bodyGeo, bodyMat));
+        // Contact positif
+        const topGeo = new THREE.CylinderGeometry(data.radius * 0.6, data.radius * 0.6, 0.02, 32);
+        const topMat = new THREE.MeshStandardMaterial({ color: COLORS.batteryTop, metalness: 0.8 });
+        const top = new THREE.Mesh(topGeo, topMat);
+        top.position.y = data.height / 2 + 0.01;
+        g.add(top);
+        return g;
+    }
+    
+    function createCover(data) {
+        const g = new THREE.Group();
+        const coverGeo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 64);
+        const coverMat = new THREE.MeshStandardMaterial({ color: COLORS.case, roughness: 0.25, metalness: 0.3 });
+        g.add(new THREE.Mesh(coverGeo, coverMat));
+        // Texture concentrique
+        for (let i = 1; i <= 3; i++) {
+            const ringGeo = new THREE.TorusGeometry(data.radius * (0.3 + i * 0.2), 0.01, 8, 64);
+            const ringMat = new THREE.MeshStandardMaterial({ color: 0x404040, metalness: 0.5 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = data.height / 2 + 0.005;
+            g.add(ring);
+        }
+        return g;
+    }
+    
+    function createIndicator(data) {
+        const geo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 32);
+        const mat = new THREE.MeshStandardMaterial({ color: COLORS.dial, roughness: 0.5 });
+        return new THREE.Mesh(geo, mat);
+    }
+    
+    function createSmall(data) {
+        const geo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 16);
+        const mat = new THREE.MeshStandardMaterial({ color: COLORS.wheelAxis, metalness: 0.5, roughness: 0.4 });
+        return new THREE.Mesh(geo, mat);
+    }
+    
+    function createGeneric(data) {
+        const r = data.radius || 0.3;
+        const h = data.height || 0.1;
+        const geo = new THREE.CylinderGeometry(r, r, h, 32);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5 });
+        return new THREE.Mesh(geo, mat);
+    }
+    
+    function createFootprints() {
+        COMPONENTS.forEach(data => {
+            const fp = createFootprint(data);
+            footprintMeshes.push(fp);
+            mainGroup.add(fp);
+            fpByComp.set(data.id, fp);
+        });
+    }
+    
+    function createFootprint(data) {
+        const g = new THREE.Group();
+        const r = data.radius || data.length || 0.5;
+        const size = r * 0.6;
+        
+        const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(size, size * 0.15, 16, 32),
+            new THREE.MeshBasicMaterial({ color: 0xe94560, transparent: true, opacity: 0.5 })
+        );
+        ring.rotation.x = Math.PI / 2;
+        g.add(ring);
+        
+        const dot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.06, 12, 12),
+            new THREE.MeshBasicMaterial({ color: 0xe94560 })
+        );
+        g.add(dot);
+        
+        g.position.set(0, data.y, 0);
+        g.userData = { id: data.id, compId: data.id, occupied: true };
+        g.visible = false;
+        
+        return g;
+    }
+    
+    function checkCompat(comp, pos) {
+        if (!comp?.userData) return { status: 'floating', fp: null };
+        
+        let nearest = null, minD = Infinity;
+        footprintMeshes.forEach(fp => {
+            const d = pos.distanceTo(fp.position);
+            if (d < minD) { minD = d; nearest = fp; }
+        });
+        
+        if (!nearest || minD > 2.5) return { status: 'floating', fp: null };
+        if (nearest.userData.compId === comp.userData.id) return { status: 'compatible', fp: nearest };
+        return { status: 'incompatible', fp: nearest };
+    }
+    
+    function updateCompatVisuals(status, comp, fp) {
+        compatStatus.className = 'compat-status visible ' + status;
+        compatStatus.textContent = status === 'compatible' ? '✓ COMPATIBLE' : 
+                                   status === 'incompatible' ? '✗ INCOMPATIBLE' : '○ FLOTTANT';
+        
+        comp.traverse(child => {
+            if (child.material && child.material.emissive) {
+                child.material.emissive.setHex(
+                    status === 'compatible' ? COLORS.ok : 
+                    status === 'incompatible' ? COLORS.bad : COLORS.float
+                );
+                child.material.emissiveIntensity = 0.3;
+            }
+        });
+        
+        if (fp) {
+            fp.visible = true;
+            fp.children.forEach(c => {
+                if (c.material) c.material.color.setHex(status === 'compatible' ? COLORS.ok : COLORS.bad);
+            });
+        }
+    }
+    
+    function clearCompatVisuals() {
+        compatStatus.classList.remove('visible');
+        componentMeshes.forEach(c => c.traverse(child => {
+            if (child.material && child.material.emissive) child.material.emissiveIntensity = 0;
+        }));
+        footprintMeshes.forEach(fp => {
+            fp.visible = deployProgress > 0.3;
+            fp.children.forEach(c => { if (c.material) c.material.color.setHex(0xe94560); });
+        });
+    }
+    
+    function snapToFP(comp, fp) {
+        if (!comp || !fp || isSnapping) return;
+        isSnapping = true;
+        
+        const startPos = comp.position.clone();
+        const targetPos = fp.position.clone();
+        const duration = 600;
+        const startTime = performance.now();
+        const bounds = comp.userData.bounds || new THREE.Vector3(1, 0.2, 1);
+        const bolts = createBolts(comp, fp, bounds);
+        
+        function animSnap(t) {
+            const elapsed = t - startTime;
+            let p = Math.min(elapsed / duration, 1);
+            
+            // Ease out cubic
+            const ep = 1 - Math.pow(1 - p, 3);
+            
+            comp.position.lerpVectors(startPos, targetPos, ep);
+            updateBolts(bolts, comp, fp, p, bounds);
+            
+            if (p < 1) {
+                requestAnimationFrame(animSnap);
+            } else {
+                comp.position.copy(targetPos);
+                createFlash(fp, bounds);
+                removeBolts(bolts);
+                comp.traverse(child => {
+                    if (child.material && child.material.emissive) child.material.emissiveIntensity = 0;
+                });
+                comp.userData.isConnected = true;
+                fp.userData.occupied = true;
+                clearCompatVisuals();
+                updateStats();
+                isSnapping = false;
+            }
+        }
+        requestAnimationFrame(animSnap);
+    }
+    
+    function createBolts(comp, fp, bounds) {
+        const bolts = [];
+        const maxR = Math.min(bounds.x, bounds.z) * 0.4;
+        
+        for (let i = 0; i < 3; i++) {
+            const pts = Array(8).fill().map(() => new THREE.Vector3());
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const mat = new THREE.LineBasicMaterial({ color: 0xe94560, transparent: true, opacity: 0.8 });
+            const bolt = new THREE.Line(geo, mat);
+            bolt.userData.angle = (i / 3) * Math.PI * 2;
+            bolt.userData.maxR = maxR;
+            mainGroup.add(bolt);
+            bolts.push(bolt);
+        }
+        return bolts;
+    }
+    
+    function updateBolts(bolts, comp, fp, progress, bounds) {
+        const cPos = comp.position;
+        const tPos = fp.position;
+        const opacity = progress > 0.2 ? Math.min((progress - 0.2) / 0.1, 1) * (1 - Math.max(0, (progress - 0.85) / 0.15)) : 0;
+        const maxR = Math.min(bounds.x, bounds.z) * 0.35;
+        
+        bolts.forEach((bolt, idx) => {
+            const positions = bolt.geometry.attributes.position;
+            const t = performance.now();
+            const angle = bolt.userData.angle + t * 0.006;
+            const r = maxR * (0.5 + Math.sin(t * 0.01 + idx) * 0.3);
+            
+            const sX = cPos.x + Math.cos(angle) * r;
+            const sZ = cPos.z + Math.sin(angle) * r;
+            const sY = cPos.y;
+            
+            const eX = tPos.x + Math.cos(angle + Math.PI) * r * 0.5;
+            const eZ = tPos.z + Math.sin(angle + Math.PI) * r * 0.5;
+            const eY = tPos.y;
+            
+            const n = 8;
+            for (let i = 0; i < n; i++) {
+                const f = i / (n - 1);
+                let x = sX + (eX - sX) * f;
+                let y = sY + (eY - sY) * f;
+                let z = sZ + (eZ - sZ) * f;
+                
+                if (i > 0 && i < n - 1) {
+                    const jit = maxR * 0.2 * (1 - f);
+                    x += (Math.random() - 0.5) * jit;
+                    z += (Math.random() - 0.5) * jit;
+                    y += (Math.random() - 0.5) * jit * 0.5;
+                }
+                positions.setXYZ(i, x, y, z);
+            }
+            positions.needsUpdate = true;
+            bolt.material.opacity = opacity * (0.5 + Math.random() * 0.4);
+            bolt.visible = opacity > 0.05;
+            bolt.material.color.setHSL(0.95 + Math.sin(t * 0.01 + idx) * 0.05, 0.8, 0.55);
+        });
+    }
+    
+    function removeBolts(bolts) {
+        bolts.forEach(bolt => {
+            mainGroup.remove(bolt);
+            bolt.geometry.dispose();
+            bolt.material.dispose();
+        });
+    }
+    
+    function createFlash(fp, bounds) {
+        const maxS = Math.min(bounds.x, bounds.z) * 0.5;
+        const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(maxS * 0.3, 0.02, 8, 32),
+            new THREE.MeshBasicMaterial({ color: 0xe94560, transparent: true, opacity: 0.9 })
+        );
+        ring.position.copy(fp.position);
+        ring.rotation.x = Math.PI / 2;
+        mainGroup.add(ring);
+        
+        const start = performance.now();
+        function animFlash(t) {
+            const p = (t - start) / 300;
+            if (p < 1) {
+                ring.scale.set(1 + p * 4, 1 + p * 4, 1);
+                ring.material.opacity = (1 - p) * 0.8;
+                requestAnimationFrame(animFlash);
+            } else {
+                mainGroup.remove(ring);
+                ring.geometry.dispose();
+                ring.material.dispose();
+            }
+        }
+        requestAnimationFrame(animFlash);
+    }
+    
+    function setupControls() {
+        document.getElementById('btnReset').addEventListener('click', resetAll);
+        document.getElementById('btnWire').addEventListener('click', () => {
+            window.location.href = 'swatch-wireframe.html';
+        });
+        
+        renderer.domElement.addEventListener('mousedown', onDown);
+        renderer.domElement.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+        
+        scrollV.addEventListener('mouseenter', () => { scrollLocked = true; if (hideTimer) clearTimeout(hideTimer); });
+        scrollV.addEventListener('mouseleave', () => { if (!isScrollDrag) scrollLocked = false; });
+        scrollH.addEventListener('mouseenter', () => { scrollLocked = true; if (hideTimer) clearTimeout(hideTimer); });
+        scrollH.addEventListener('mouseleave', () => { if (!isScrollDrag) scrollLocked = false; });
+        
+        scrollV.addEventListener('mousedown', e => {
+            e.stopPropagation();
+            isScrollDrag = true; scrollLocked = true; activeScroll = 'v'; scrollStartY = e.clientY;
+        });
+        scrollH.addEventListener('mousedown', e => {
+            e.stopPropagation();
+            isScrollDrag = true; scrollLocked = true; activeScroll = 'h'; scrollStartX = e.clientX;
+        });
+        
+        window.addEventListener('mousemove', onScrollDrag);
+        
+        document.addEventListener('keydown', e => {
+            if (e.key.toLowerCase() === 'r') {
+                spherical = { theta: 0.3, phi: Math.PI / 2.5, radius: 25 };
+                updateCamera();
+            }
+            if (e.key.toLowerCase() === 't') {
+                spherical.phi = Math.PI / 2;
+                spherical.theta = 0;
+                updateCamera();
+            }
+        });
+    }
+    
+    function onDown(e) {
+        if (e.button !== 0) return;
+        
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        
+        const hits = raycaster.intersectObjects(componentMeshes, true);
+        if (hits.length > 0) {
+            let c = hits[0].object;
+            while (c.parent && !componentMeshes.includes(c)) c = c.parent;
+            
+            if (componentMeshes.includes(c)) {
+                isDragging = true;
+                draggedComp = c;
+                document.body.classList.add('dragging');
+                
+                const fp = fpByComp.get(c.userData.id);
+                if (fp) { fp.userData.occupied = false; fp.visible = true; }
+                c.userData.isConnected = false;
+                
+                dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -c.position.z);
+                const inter = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragPlane, inter);
+                dragOffset.copy(c.position).sub(inter);
+                
+                hideScrollbars(true);
+            }
+        } else {
+            isRotating = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+        }
+    }
+    
+    function onMove(e) {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        
+        if (isDragging && draggedComp) {
+            raycaster.setFromCamera(mouse, camera);
+            const inter = new THREE.Vector3();
+            if (raycaster.ray.intersectPlane(dragPlane, inter)) {
+                draggedComp.position.copy(inter.add(dragOffset));
+                const res = checkCompat(draggedComp, draggedComp.position);
+                currentCompat = res.status;
+                nearestFP = res.fp;
+                updateCompatVisuals(res.status, draggedComp, res.fp);
+            }
+        } else if (isRotating) {
+            const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
+            spherical.theta -= dx * 0.007;
+            spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi - dy * 0.007));
+            updateCamera();
+            lastX = e.clientX;
+            lastY = e.clientY;
+        } else if (!isScrollDrag) {
+            raycaster.setFromCamera(mouse, camera);
+            const hits = raycaster.intersectObjects(componentMeshes, true);
+            
+            if (hits.length > 0) {
+                let c = hits[0].object;
+                while (c.parent && !componentMeshes.includes(c)) c = c.parent;
+                
+                if (componentMeshes.includes(c) && c.userData.id) {
+                    if (hoveredComp !== c) {
+                        hoveredComp = c;
+                        showScrollbars(c);
+                    } else {
+                        updateScrollPos(c);
+                    }
+                    hoverTip.textContent = c.userData.name || c.userData.id;
+                    hoverTip.style.left = (e.clientX + 12) + 'px';
+                    hoverTip.style.top = (e.clientY - 8) + 'px';
+                    hoverTip.classList.add('visible');
+                } else {
+                    hideScrollbars();
+                    hoverTip.classList.remove('visible');
+                }
+            } else {
+                hideScrollbars();
+                hoverTip.classList.remove('visible');
+            }
+        }
+    }
+    
+    function onUp(e) {
+        if (isDragging && draggedComp) {
+            if (currentCompat === 'compatible' && nearestFP) {
+                snapToFP(draggedComp, nearestFP);
+            } else {
+                clearCompatVisuals();
+            }
+            isDragging = false;
+            draggedComp = null;
+            currentCompat = null;
+            nearestFP = null;
+            document.body.classList.remove('dragging');
+            updateStats();
+        }
+        isRotating = false;
+        if (isScrollDrag) {
+            isScrollDrag = false;
+            scrollLocked = false;
+        }
+    }
+    
+    function onWheel(e) {
+        e.preventDefault();
+        if (hoveredComp) {
+            const delta = e.deltaY * 0.001;
+            const state = compStates.get(hoveredComp.userData.id);
+            if (state) {
+                state.cScale = Math.max(0.5, Math.min(3, (state.cScale || 1) + delta));
+                hoveredComp.scale.setScalar(state.cScale);
+                updateScrollPos(hoveredComp);
+            }
+        } else {
+            const delta = e.deltaY * 0.001;
+            deployProgress = Math.max(0, Math.min(1, deployProgress - delta));
+            updateExplosion();
+        }
+    }
+    
+    function onScrollDrag(e) {
+        if (!isScrollDrag || !hoveredComp) return;
+        const state = compStates.get(hoveredComp.userData.id);
+        if (!state) return;
+        
+        if (activeScroll === 'v') {
+            const dy = e.clientY - scrollStartY;
+            state.rotY = (state.rotY || 0) - dy * 0.02;
+            hoveredComp.rotation.y = state.rotY;
+            scrollStartY = e.clientY;
+            thumbV.style.top = (32 + Math.sin(state.rotY) * 22) + 'px';
+        } else if (activeScroll === 'h') {
+            const dx = e.clientX - scrollStartX;
+            state.rotX = (state.rotX || 0) - dx * 0.02;
+            hoveredComp.rotation.x = state.rotX;
+            scrollStartX = e.clientX;
+            thumbH.style.left = (32 + Math.sin(state.rotX) * 22) + 'px';
+        }
+    }
+    
+    function updateExplosion() {
+        const totalHeight = 20; // Hauteur totale de l'explosion
+        
+        componentMeshes.forEach((c, i) => {
+            if (c.userData.origPos) {
+                const o = c.userData.origPos;
+                // Explosion verticale proportionnelle à la position
+                const explosionOffset = (i / componentMeshes.length) * totalHeight * deployProgress;
+                c.position.y = o.y + explosionOffset;
+                c.userData.isConnected = deployProgress < 0.1;
+            }
+        });
+        
+        footprintMeshes.forEach((fp, i) => {
+            const explosionOffset = (i / footprintMeshes.length) * totalHeight * deployProgress;
+            fp.position.y = COMPONENTS[i].y + explosionOffset;
+            fp.visible = deployProgress > 0.3;
+        });
+        
+        document.getElementById('deployPct').textContent = Math.round(deployProgress * 100) + '%';
+        updateStats();
+    }
+    
+    function resetAll() {
+        deployProgress = 0;
+        
+        componentMeshes.forEach((c, i) => {
+            if (c.userData.origPos) {
+                c.position.copy(c.userData.origPos);
+                c.rotation.set(0, 0, 0);
+                c.scale.set(1, 1, 1);
+                c.userData.isConnected = true;
+            }
+            const state = compStates.get(c.userData.id);
+            if (state) { state.rotX = 0; state.rotY = 0; state.cScale = 1; }
+        });
+        
+        footprintMeshes.forEach((fp, i) => {
+            fp.position.y = COMPONENTS[i].y;
+            fp.userData.occupied = true;
+            fp.visible = false;
+        });
+        
+        document.getElementById('deployPct').textContent = '0%';
+        updateStats();
+    }
+    
+    function showScrollbars(comp) {
+        if (!comp) return;
+        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        
+        const pos = getScreenPos(comp);
+        if (!pos) return;
+        
+        scrollV.style.left = (pos.x + 50) + 'px';
+        scrollV.style.top = (pos.y - 45) + 'px';
+        scrollH.style.left = (pos.x - 45) + 'px';
+        scrollH.style.top = (pos.y + 50) + 'px';
+        
+        floatName.textContent = comp.userData.name || comp.userData.id;
+        floatType.textContent = comp.userData.type || '';
+        floatInfo.style.left = (pos.x - 80) + 'px';
+        floatInfo.style.top = (pos.y - 70) + 'px';
+        floatInfo.classList.add('visible');
+        scrollbars.classList.add('visible');
+    }
+    
+    function updateScrollPos(comp) {
+        if (!comp || !scrollbars.classList.contains('visible')) return;
+        const pos = getScreenPos(comp);
+        if (!pos) return;
+        
+        scrollV.style.left = (pos.x + 50) + 'px';
+        scrollV.style.top = (pos.y - 45) + 'px';
+        scrollH.style.left = (pos.x - 45) + 'px';
+        scrollH.style.top = (pos.y + 50) + 'px';
+        floatInfo.style.left = (pos.x - 80) + 'px';
+        floatInfo.style.top = (pos.y - 70) + 'px';
+    }
+    
+    function hideScrollbars(immediate = false) {
+        if (scrollLocked || isScrollDrag) return;
+        
+        if (immediate) {
+            if (hideTimer) clearTimeout(hideTimer);
+            hoveredComp = null;
+            scrollbars.classList.remove('visible');
+            floatInfo.classList.remove('visible');
+        } else {
+            if (hideTimer) clearTimeout(hideTimer);
+            hideTimer = setTimeout(() => {
+                if (!scrollLocked && !isScrollDrag) {
+                    hoveredComp = null;
+                    scrollbars.classList.remove('visible');
+                    floatInfo.classList.remove('visible');
+                }
+            }, 150);
+        }
+    }
+    
+    function getScreenPos(obj) {
+        const v = new THREE.Vector3();
+        new THREE.Box3().setFromObject(obj).getCenter(v);
+        v.project(camera);
+        return {
+            x: (v.x * 0.5 + 0.5) * window.innerWidth,
+            y: (-v.y * 0.5 + 0.5) * window.innerHeight
+        };
+    }
+    
+    function updateStats() {
+        let conn = 0;
+        componentMeshes.forEach(c => { if (c.userData.isConnected) conn++; });
+        document.getElementById('compCount').textContent = COMPONENTS.length;
+        document.getElementById('connCount').textContent = conn;
+    }
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+    }
+    
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    
+    init();
+    </script>
+</body>
+</html>

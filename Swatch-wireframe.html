@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWATCH - Vue Éclatée 3D - WIREFRAME</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #fff; overflow: hidden; font-family: 'Courier New', monospace; }
+        #canvas-container { width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; }
+        
+        #loading {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        #loading.hidden { opacity: 0; pointer-events: none; }
+        #loading h1 { color: #e94560; font-size: 2rem; letter-spacing: 10px; }
+        #loading h2 { color: #666; font-size: 0.8rem; letter-spacing: 3px; margin-top: 5px; }
+        .loader { width: 300px; height: 2px; background: rgba(233,69,96,0.2); margin-top: 30px; }
+        .loader-bar { height: 100%; background: linear-gradient(90deg, #e94560, #333); width: 0%; }
+        
+        #info-panel {
+            position: fixed; top: 20px; right: 20px;
+            background: rgba(255,255,255,0.95); border: 2px solid #333;
+            padding: 15px; min-width: 180px;
+        }
+        #info-panel h1 { color: #e94560; font-size: 0.9rem; letter-spacing: 3px; }
+        #info-panel .sub { color: #666; font-size: 0.6rem; margin-bottom: 12px; }
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .stat { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        .stat-label { font-size: 0.55rem; color: #888; text-transform: uppercase; }
+        .stat-value { font-size: 1rem; color: #e94560; }
+        
+        #controls {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.95); padding: 10px 20px; border: 2px solid #333;
+            font-size: 0.65rem; color: #666;
+        }
+        #controls kbd { background: #333; color: #fff; padding: 2px 6px; margin: 0 2px; }
+        
+        .buttons-container { position: fixed; top: 20px; left: 20px; display: flex; gap: 8px; }
+        .btn {
+            background: #fff; border: 2px solid #333; color: #333;
+            padding: 8px 16px; cursor: pointer; font-size: 0.7rem;
+            font-family: 'Courier New', monospace; transition: all 0.2s;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .btn:hover { background: #333; color: #fff; }
+        .btn.active { background: #333; color: #fff; }
+        
+        .legend {
+            position: fixed; left: 20px; top: 85px;
+            background: rgba(255,255,255,0.95); border: 2px solid #333;
+            padding: 12px; font-size: 0.55rem; max-height: 65vh; overflow-y: auto; width: 150px;
+        }
+        .legend h3 { color: #e94560; margin-bottom: 8px; font-size: 0.6rem; letter-spacing: 2px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; margin: 4px 0; color: #666; }
+        .legend-color { width: 12px; height: 8px; flex-shrink: 0; border: 1px solid #333; }
+        
+        .scrollbars { position: fixed; pointer-events: none; opacity: 0; transition: opacity 0.15s; }
+        .scrollbars.visible { opacity: 1; }
+        .scrollbar-v {
+            position: absolute; width: 8px; height: 80px;
+            background: transparent; border: 2px solid #333;
+            pointer-events: auto; cursor: ns-resize;
+        }
+        .scrollbar-v .thumb {
+            position: absolute; width: 100%; height: 24px;
+            background: #333; top: 50%; transform: translateY(-50%);
+        }
+        .scrollbar-h {
+            position: absolute; width: 80px; height: 8px;
+            background: transparent; border: 2px solid #333;
+            pointer-events: auto; cursor: ew-resize;
+        }
+        .scrollbar-h .thumb {
+            position: absolute; height: 100%; width: 24px;
+            background: #333; left: 50%; transform: translateX(-50%);
+        }
+        
+        .float-info {
+            position: fixed; background: rgba(255,255,255,0.98); color: #333;
+            padding: 8px 12px; font-size: 0.65rem; pointer-events: none;
+            opacity: 0; transition: opacity 0.15s; border: 2px solid #333;
+        }
+        .float-info.visible { opacity: 1; }
+        .float-info .name { color: #e94560; font-weight: bold; }
+        .float-info .type { color: #888; font-size: 0.55rem; margin-top: 2px; }
+        
+        .compat-status {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            padding: 12px 25px; font-size: 0.9rem; pointer-events: none;
+            opacity: 0; transition: opacity 0.15s; letter-spacing: 2px; border: 3px solid;
+        }
+        .compat-status.visible { opacity: 1; }
+        .compat-status.compatible { background: #fff; color: #10b981; border-color: #10b981; }
+        .compat-status.incompatible { background: #fff; color: #ef4444; border-color: #ef4444; }
+        .compat-status.floating { background: #fff; color: #f59e0b; border-color: #f59e0b; }
+        
+        .hover-tip {
+            position: fixed; background: #fff; color: #e94560;
+            padding: 3px 6px; font-size: 0.6rem; pointer-events: none;
+            opacity: 0; transition: opacity 0.1s; border: 1px solid #333;
+        }
+        .hover-tip.visible { opacity: 1; }
+        
+        body.dragging { cursor: grabbing !important; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="loading">
+        <h1>SWATCH</h1>
+        <h2>WIREFRAME MODE • 28 COMPOSANTS</h2>
+        <div class="loader"><div class="loader-bar" id="loader-bar"></div></div>
+    </div>
+    
+    <div class="scrollbars" id="scrollbars">
+        <div class="scrollbar-v" id="scrollV"><div class="thumb" id="thumbV"></div></div>
+        <div class="scrollbar-h" id="scrollH"><div class="thumb" id="thumbH"></div></div>
+    </div>
+    
+    <div class="float-info" id="floatInfo">
+        <div class="name" id="floatName">--</div>
+        <div class="type" id="floatType">--</div>
+    </div>
+    
+    <div class="compat-status" id="compatStatus">COMPATIBLE</div>
+    <div class="hover-tip" id="hoverTip"></div>
+    
+    <div id="info-panel">
+        <h1>SWATCH</h1>
+        <p class="sub">WIREFRAME // Swiss Made</p>
+        <div class="stats">
+            <div class="stat"><div class="stat-label">Composants</div><div class="stat-value" id="compCount">0</div></div>
+            <div class="stat"><div class="stat-label">Connectés</div><div class="stat-value" id="connCount">0</div></div>
+            <div class="stat"><div class="stat-label">Déployé</div><div class="stat-value" id="deployPct">0%</div></div>
+            <div class="stat"><div class="stat-label">Type</div><div class="stat-value" style="font-size:0.55rem">Quartz</div></div>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <kbd>↑</kbd> EXPLODE <kbd>↓</kbd> ASSEMBLE <kbd>DRAG</kbd> MOVE <kbd>R</kbd> RESET <kbd>T</kbd> SIDE
+    </div>
+    
+    <div class="legend">
+        <h3>// COMPOSANTS</h3>
+        <div class="legend-item"><div class="legend-color" style="background:#00aaff"></div>Verre</div>
+        <div class="legend-item"><div class="legend-color" style="background:#333"></div>Aiguilles</div>
+        <div class="legend-item"><div class="legend-color" style="background:#666"></div>Cadran</div>
+        <div class="legend-item"><div class="legend-color" style="background:#d4af37"></div>Roues</div>
+        <div class="legend-item"><div class="legend-color" style="background:#cd7f32"></div>Bobine</div>
+        <div class="legend-item"><div class="legend-color" style="background:#1a1a1a"></div>Boîtier</div>
+        <div class="legend-item"><div class="legend-color" style="background:#4a90d9"></div>Module</div>
+        <div class="legend-item"><div class="legend-color" style="background:#10b981"></div>Pile</div>
+    </div>
+    
+    <div class="buttons-container">
+        <button class="btn" id="btnReset">RESET</button>
+        <button class="btn" id="btnSolid">SOLID</button>
+        <button class="btn active" id="btnWire">WIREFRAME</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+    // =============================================
+    // SWATCH WATCH - EXPLODED VIEW - WIREFRAME MODE
+    // Fond blanc, lignes noires/colorées
+    // =============================================
+    
+    const WIRE = {
+        glass: 0x00aaff, needle: 0x333333, dial: 0x666666,
+        wheel: 0xd4af37, coil: 0xcd7f32, stator: 0x8b4513,
+        case: 0x1a1a1a, module: 0x4a90d9, battery: 0x10b981,
+        plate: 0x888888, small: 0x666666,
+        ok: 0x10b981, bad: 0xef4444, float: 0xf59e0b
+    };
+    
+    const COMPONENTS = [
+        { id: 'verre', name: 'Verre', type: 'glass', y: 14, radius: 1.8, height: 0.15, color: WIRE.glass },
+        { id: 'aig_sec', name: 'Aiguille des secondes', type: 'needle', y: 13, length: 1.5, width: 0.03, color: WIRE.needle },
+        { id: 'aig_min', name: 'Aiguille des minutes', type: 'needle', y: 12.5, length: 1.3, width: 0.05, color: WIRE.needle },
+        { id: 'aig_heure', name: 'Aiguille des heures', type: 'needle', y: 12, length: 0.9, width: 0.07, color: WIRE.needle },
+        { id: 'cadran', name: 'Cadran', type: 'dial', y: 11, radius: 1.75, height: 0.08, color: WIRE.dial },
+        { id: 'clavette', name: 'Clavette', type: 'small', y: 10.2, radius: 0.15, height: 0.1, color: WIRE.small },
+        { id: 'indic_jour', name: 'Indicateur du jour', type: 'indicator', y: 9.5, radius: 0.5, height: 0.06, color: WIRE.dial },
+        { id: 'plaque_maintien', name: 'Plaque de maintien', type: 'plate', y: 8.8, radius: 1.5, height: 0.1, color: WIRE.plate },
+        { id: 'indic_quantieme', name: 'Indicateur de quantième', type: 'ring', y: 8, radius: 1.6, height: 0.08, color: WIRE.plate },
+        { id: 'roue_entrainement', name: 'Roue entraîneuse', type: 'wheel', y: 7.2, radius: 0.4, height: 0.12, color: WIRE.wheel },
+        { id: 'chaussee', name: 'Chaussée', type: 'wheel', y: 6.6, radius: 0.25, height: 0.25, color: WIRE.wheel },
+        { id: 'cannon', name: 'Cannon', type: 'wheel', y: 6, radius: 0.2, height: 0.3, color: WIRE.wheel },
+        { id: 'minuterie', name: 'Minuterie', type: 'wheel', y: 5.4, radius: 0.35, height: 0.1, color: WIRE.wheel },
+        { id: 'renvoi_minuterie', name: 'Renvoi de roue de minuterie', type: 'wheel', y: 4.8, radius: 0.3, height: 0.1, color: WIRE.wheel },
+        { id: 'stator', name: 'Stator', type: 'stator', y: 4.2, radius: 0.5, height: 0.15, color: WIRE.stator },
+        { id: 'rotor', name: 'Rotor', type: 'rotor', y: 3.6, radius: 0.35, height: 0.08, color: WIRE.wheel },
+        { id: 'roue_seconde', name: 'Roue de seconde', type: 'wheel', y: 3, radius: 0.3, height: 0.1, color: WIRE.wheel },
+        { id: 'roue_intermediaire', name: 'Roue intermédiaire', type: 'wheel', y: 2.4, radius: 0.25, height: 0.1, color: WIRE.wheel },
+        { id: 'bobine', name: 'Bobine', type: 'coil', y: 1.8, radius: 0.4, height: 0.25, color: WIRE.coil },
+        { id: 'tenon_bascule', name: 'Tenon de bascule', type: 'small', y: 1.3, radius: 0.08, height: 0.15, color: WIRE.small },
+        { id: 'bascule', name: 'Bascule', type: 'lever', y: 0.8, length: 0.6, width: 0.12, color: WIRE.plate },
+        { id: 'module_elec', name: 'Module électronique', type: 'module', y: 0, radius: 1.4, height: 0.2, color: WIRE.module },
+        { id: 'tenon_tirette', name: 'Tenon de tirette', type: 'small', y: -0.6, radius: 0.06, height: 0.12, color: WIRE.small },
+        { id: 'tirette', name: 'Tirette', type: 'lever', y: -1.2, length: 0.8, width: 0.1, color: WIRE.plate },
+        { id: 'tige', name: 'Tige', type: 'stem', y: -2, length: 1.2, radius: 0.08, color: WIRE.needle },
+        { id: 'boite', name: 'Boîte', type: 'case', y: -3.5, radius: 2, height: 0.8, color: WIRE.case },
+        { id: 'pile', name: 'Pile', type: 'battery', y: -5, radius: 0.9, height: 0.25, color: WIRE.battery },
+        { id: 'couvercle_pile', name: 'Couvercle de pile', type: 'cover', y: -6, radius: 1.9, height: 0.12, color: WIRE.case }
+    ];
+    
+    let scene, camera, renderer, raycaster, mouse;
+    let componentMeshes = [], footprintMeshes = [], mainGroup;
+    let deployProgress = 0, isSnapping = false;
+    let spherical = { theta: 0.3, phi: Math.PI / 2.5, radius: 25 };
+    let target = new THREE.Vector3(0, 4, 0);
+    let isRotating = false, lastX = 0, lastY = 0;
+    let isDragging = false, draggedComp = null, dragPlane = null, dragOffset = new THREE.Vector3();
+    let hoveredComp = null, isScrollDrag = false, activeScroll = null;
+    let scrollStartX = 0, scrollStartY = 0;
+    let compStates = new Map(), fpByComp = new Map();
+    let hideTimer = null, scrollLocked = false;
+    let currentCompat = null, nearestFP = null;
+    
+    const scrollbars = document.getElementById('scrollbars');
+    const scrollV = document.getElementById('scrollV');
+    const scrollH = document.getElementById('scrollH');
+    const thumbV = document.getElementById('thumbV');
+    const thumbH = document.getElementById('thumbH');
+    const floatInfo = document.getElementById('floatInfo');
+    const floatName = document.getElementById('floatName');
+    const floatType = document.getElementById('floatType');
+    const hoverTip = document.getElementById('hoverTip');
+    const compatStatus = document.getElementById('compatStatus');
+    
+    function init() {
+        updateLoader(10);
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+        
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+        updateCamera();
+        
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        updateLoader(25);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const light = new THREE.DirectionalLight(0xffffff, 0.4);
+        light.position.set(10, 20, 10);
+        scene.add(light);
+        
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+        
+        mainGroup = new THREE.Group();
+        scene.add(mainGroup);
+        
+        updateLoader(45);
+        createComponents();
+        createFootprints();
+        
+        updateLoader(85);
+        setupControls();
+        
+        updateLoader(100);
+        setTimeout(() => document.getElementById('loading').classList.add('hidden'), 400);
+        
+        animate();
+        updateStats();
+    }
+    
+    function updateLoader(p) { document.getElementById('loader-bar').style.width = p + '%'; }
+    
+    function updateCamera() {
+        camera.position.x = target.x + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+        camera.position.y = target.y + spherical.radius * Math.cos(spherical.phi);
+        camera.position.z = target.z + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+        camera.lookAt(target);
+    }
+    
+    function createComponents() {
+        COMPONENTS.forEach(data => {
+            const mesh = createWireComponent(data);
+            componentMeshes.push(mesh);
+            mainGroup.add(mesh);
+        });
+    }
+    
+    function createWireComponent(data) {
+        const group = new THREE.Group();
+        let geo;
+        
+        const r = data.radius || data.length || 0.3;
+        const h = data.height || 0.1;
+        
+        switch(data.type) {
+            case 'glass':
+                geo = new THREE.SphereGeometry(data.radius, 32, 16, 0, Math.PI * 2, 0, Math.PI / 5);
+                break;
+            case 'needle':
+                geo = new THREE.BoxGeometry(data.width, 0.02, data.length);
+                break;
+            case 'dial':
+            case 'plate':
+            case 'indicator':
+            case 'cover':
+                geo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 32);
+                break;
+            case 'wheel':
+            case 'rotor':
+            case 'small':
+                geo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 24);
+                break;
+            case 'ring':
+                geo = new THREE.TorusGeometry(data.radius, 0.08, 8, 32);
+                break;
+            case 'stator':
+                geo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 6);
+                break;
+            case 'coil':
+                geo = new THREE.TorusGeometry(data.radius * 0.6, data.radius * 0.3, 8, 24);
+                break;
+            case 'module':
+                geo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 32);
+                break;
+            case 'lever':
+                geo = new THREE.BoxGeometry(data.width, 0.04, data.length);
+                break;
+            case 'stem':
+                geo = new THREE.CylinderGeometry(data.radius, data.radius, data.length, 16);
+                break;
+            case 'case':
+                geo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 48);
+                break;
+            case 'battery':
+                geo = new THREE.CylinderGeometry(data.radius, data.radius, data.height, 24);
+                break;
+            default:
+                geo = new THREE.CylinderGeometry(r, r, h, 24);
+        }
+        
+        const edges = new THREE.EdgesGeometry(geo);
+        const line = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: data.color, transparent: true, opacity: 0.9 })
+        );
+        
+        if (data.type === 'ring' || data.type === 'coil') {
+            line.rotation.x = Math.PI / 2;
+        }
+        if (data.type === 'stem') {
+            line.rotation.z = Math.PI / 2;
+            line.position.x = data.length / 2;
+        }
+        
+        group.add(line);
+        
+        // Points aux vertices
+        const vertices = [];
+        const posAttr = geo.attributes.position;
+        for (let i = 0; i < Math.min(posAttr.count, 32); i += Math.ceil(posAttr.count / 32)) {
+            vertices.push(new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)));
+        }
+        
+        const pts = new THREE.Points(
+            new THREE.BufferGeometry().setFromPoints(vertices),
+            new THREE.PointsMaterial({ color: data.color, size: 0.08, transparent: true, opacity: 0.7 })
+        );
+        if (data.type === 'ring' || data.type === 'coil') pts.rotation.x = Math.PI / 2;
+        if (data.type === 'stem') { pts.rotation.z = Math.PI / 2; pts.position.x = data.length / 2; }
+        group.add(pts);
+        
+        group.position.set(0, data.y, 0);
+        
+        const bounds = new THREE.Vector3(r * 2, h, r * 2);
+        group.userData = {
+            id: data.id, name: data.name, type: data.type,
+            origPos: new THREE.Vector3(0, data.y, 0),
+            explodeDir: new THREE.Vector3(0, 1, 0),
+            explodeDist: 1.5, isConnected: true,
+            bounds: bounds, color: data.color
+        };
+        
+        compStates.set(data.id, { pos: group.position.clone(), rot: group.rotation.clone(), scale: group.scale.clone(), rotX: 0, rotY: 0, cScale: 1 });
+        return group;
+    }
+    
+    function createFootprints() {
+        COMPONENTS.forEach(data => {
+            const fp = createFootprint(data);
+            footprintMeshes.push(fp);
+            mainGroup.add(fp);
+            fpByComp.set(data.id, fp);
+        });
+    }
+    
+    function createFootprint(data) {
+        const g = new THREE.Group();
+        const r = data.radius || data.length || 0.5;
+        const size = r * 0.5;
+        
+        const ring = new THREE.Mesh(
+            new THREE.RingGeometry(size * 0.6, size, 24),
+            new THREE.MeshBasicMaterial({ color: 0xe94560, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
+        );
+        ring.rotation.x = -Math.PI / 2;
+        g.add(ring);
+        
+        const dot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.05, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xe94560 })
+        );
+        g.add(dot);
+        
+        g.position.set(0, data.y, 0);
+        g.userData = { id: data.id, compId: data.id, occupied: true };
+        g.visible = false;
+        
+        return g;
+    }
+    
+    function checkCompat(comp, pos) {
+        if (!comp?.userData) return { status: 'floating', fp: null };
+        let nearest = null, minD = Infinity;
+        footprintMeshes.forEach(fp => { const d = pos.distanceTo(fp.position); if (d < minD) { minD = d; nearest = fp; } });
+        if (!nearest || minD > 2.5) return { status: 'floating', fp: null };
+        if (nearest.userData.compId === comp.userData.id) return { status: 'compatible', fp: nearest };
+        return { status: 'incompatible', fp: nearest };
+    }
+    
+    function updateCompatVisuals(status, comp, fp) {
+        compatStatus.className = 'compat-status visible ' + status;
+        compatStatus.textContent = status === 'compatible' ? '>> COMPATIBLE <<' : status === 'incompatible' ? '!! INCOMPATIBLE !!' : '-- FLOATING --';
+        comp.traverse(c => { if (c.material) c.material.color.setHex(status === 'compatible' ? WIRE.ok : status === 'incompatible' ? WIRE.bad : WIRE.float); });
+        if (fp) { fp.visible = true; fp.children.forEach(c => { if (c.material) c.material.color.setHex(status === 'compatible' ? WIRE.ok : WIRE.bad); }); }
+    }
+    
+    function clearCompatVisuals() {
+        compatStatus.classList.remove('visible');
+        componentMeshes.forEach(c => { const col = c.userData.color || 0x333333; c.traverse(ch => { if (ch.material) ch.material.color.setHex(col); }); });
+        footprintMeshes.forEach(fp => { fp.visible = deployProgress > 0.3; fp.children.forEach(c => { if (c.material) c.material.color.setHex(0xe94560); }); });
+    }
+    
+    function snapToFP(comp, fp) {
+        if (!comp || !fp || isSnapping) return;
+        isSnapping = true;
+        const startPos = comp.position.clone();
+        const targetPos = fp.position.clone();
+        const duration = 600;
+        const startTime = performance.now();
+        const bounds = comp.userData.bounds || new THREE.Vector3(1, 0.2, 1);
+        const bolts = createBolts(comp, fp, bounds);
+        
+        function animSnap(t) {
+            const elapsed = t - startTime;
+            let p = Math.min(elapsed / duration, 1);
+            const ep = 1 - Math.pow(1 - p, 3);
+            comp.position.lerpVectors(startPos, targetPos, ep);
+            updateBolts(bolts, comp, fp, p, bounds);
+            if (p < 1) requestAnimationFrame(animSnap);
+            else {
+                comp.position.copy(targetPos);
+                createFlash(fp, bounds);
+                removeBolts(bolts);
+                comp.userData.isConnected = true;
+                fp.userData.occupied = true;
+                clearCompatVisuals();
+                updateStats();
+                isSnapping = false;
+            }
+        }
+        requestAnimationFrame(animSnap);
+    }
+    
+    function createBolts(comp, fp, bounds) {
+        const bolts = [];
+        const maxR = Math.min(bounds.x, bounds.z) * 0.4;
+        for (let i = 0; i < 3; i++) {
+            const pts = Array(8).fill().map(() => new THREE.Vector3());
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const mat = new THREE.LineBasicMaterial({ color: 0xe94560, transparent: true, opacity: 0.85 });
+            const bolt = new THREE.Line(geo, mat);
+            bolt.userData.angle = (i / 3) * Math.PI * 2;
+            bolt.userData.maxR = maxR;
+            mainGroup.add(bolt);
+            bolts.push(bolt);
+        }
+        return bolts;
+    }
+    
+    function updateBolts(bolts, comp, fp, progress, bounds) {
+        const cPos = comp.position, tPos = fp.position;
+        const opacity = progress > 0.2 ? Math.min((progress - 0.2) / 0.1, 1) * (1 - Math.max(0, (progress - 0.85) / 0.15)) : 0;
+        const maxR = Math.min(bounds.x, bounds.z) * 0.35;
+        bolts.forEach((bolt, idx) => {
+            const positions = bolt.geometry.attributes.position;
+            const t = performance.now();
+            const angle = bolt.userData.angle + t * 0.006;
+            const r = maxR * (0.5 + Math.sin(t * 0.01 + idx) * 0.3);
+            const sX = cPos.x + Math.cos(angle) * r, sZ = cPos.z + Math.sin(angle) * r, sY = cPos.y;
+            const eX = tPos.x + Math.cos(angle + Math.PI) * r * 0.5, eZ = tPos.z + Math.sin(angle + Math.PI) * r * 0.5, eY = tPos.y;
+            const n = 8;
+            for (let i = 0; i < n; i++) {
+                const f = i / (n - 1);
+                let x = sX + (eX - sX) * f, y = sY + (eY - sY) * f, z = sZ + (eZ - sZ) * f;
+                if (i > 0 && i < n - 1) { const jit = maxR * 0.2 * (1 - f); x += (Math.random() - 0.5) * jit; z += (Math.random() - 0.5) * jit; y += (Math.random() - 0.5) * jit * 0.5; }
+                positions.setXYZ(i, x, y, z);
+            }
+            positions.needsUpdate = true;
+            bolt.material.opacity = opacity * (0.5 + Math.random() * 0.4);
+            bolt.visible = opacity > 0.05;
+            bolt.material.color.setHSL(0.95 + Math.sin(t * 0.01 + idx) * 0.05, 0.8, 0.5);
+        });
+    }
+    
+    function removeBolts(bolts) { bolts.forEach(bolt => { mainGroup.remove(bolt); bolt.geometry.dispose(); bolt.material.dispose(); }); }
+    
+    function createFlash(fp, bounds) {
+        const maxS = Math.min(bounds.x, bounds.z) * 0.5;
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.02, maxS * 0.3, 24), new THREE.MeshBasicMaterial({ color: 0xe94560, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+        ring.position.copy(fp.position);
+        ring.rotation.x = -Math.PI / 2;
+        mainGroup.add(ring);
+        const start = performance.now();
+        function animFlash(t) {
+            const p = (t - start) / 300;
+            if (p < 1) { ring.scale.set(1 + p * 4, 1 + p * 4, 1); ring.material.opacity = (1 - p) * 0.75; requestAnimationFrame(animFlash); }
+            else { mainGroup.remove(ring); ring.geometry.dispose(); ring.material.dispose(); }
+        }
+        requestAnimationFrame(animFlash);
+    }
+    
+    function setupControls() {
+        document.getElementById('btnReset').addEventListener('click', resetAll);
+        document.getElementById('btnSolid').addEventListener('click', () => { window.location.href = 'swatch-solid.html'; });
+        
+        renderer.domElement.addEventListener('mousedown', onDown);
+        renderer.domElement.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+        
+        scrollV.addEventListener('mouseenter', () => { scrollLocked = true; if (hideTimer) clearTimeout(hideTimer); });
+        scrollV.addEventListener('mouseleave', () => { if (!isScrollDrag) scrollLocked = false; });
+        scrollH.addEventListener('mouseenter', () => { scrollLocked = true; if (hideTimer) clearTimeout(hideTimer); });
+        scrollH.addEventListener('mouseleave', () => { if (!isScrollDrag) scrollLocked = false; });
+        scrollV.addEventListener('mousedown', e => { e.stopPropagation(); isScrollDrag = true; scrollLocked = true; activeScroll = 'v'; scrollStartY = e.clientY; });
+        scrollH.addEventListener('mousedown', e => { e.stopPropagation(); isScrollDrag = true; scrollLocked = true; activeScroll = 'h'; scrollStartX = e.clientX; });
+        window.addEventListener('mousemove', onScrollDrag);
+        
+        document.addEventListener('keydown', e => {
+            if (e.key.toLowerCase() === 'r') { spherical = { theta: 0.3, phi: Math.PI / 2.5, radius: 25 }; updateCamera(); }
+            if (e.key.toLowerCase() === 't') { spherical.phi = Math.PI / 2; spherical.theta = 0; updateCamera(); }
+        });
+    }
+    
+    function onDown(e) {
+        if (e.button !== 0) return;
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObjects(componentMeshes, true);
+        if (hits.length > 0) {
+            let c = hits[0].object;
+            while (c.parent && !componentMeshes.includes(c)) c = c.parent;
+            if (componentMeshes.includes(c)) {
+                isDragging = true; draggedComp = c; document.body.classList.add('dragging');
+                const fp = fpByComp.get(c.userData.id);
+                if (fp) { fp.userData.occupied = false; fp.visible = true; }
+                c.userData.isConnected = false;
+                dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -c.position.z);
+                const inter = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragPlane, inter);
+                dragOffset.copy(c.position).sub(inter);
+                hideScrollbars(true);
+            }
+        } else { isRotating = true; lastX = e.clientX; lastY = e.clientY; }
+    }
+    
+    function onMove(e) {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        if (isDragging && draggedComp) {
+            raycaster.setFromCamera(mouse, camera);
+            const inter = new THREE.Vector3();
+            if (raycaster.ray.intersectPlane(dragPlane, inter)) {
+                draggedComp.position.copy(inter.add(dragOffset));
+                const res = checkCompat(draggedComp, draggedComp.position);
+                currentCompat = res.status; nearestFP = res.fp;
+                updateCompatVisuals(res.status, draggedComp, res.fp);
+            }
+        } else if (isRotating) {
+            const dx = e.clientX - lastX, dy = e.clientY - lastY;
+            spherical.theta -= dx * 0.007;
+            spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi - dy * 0.007));
+            updateCamera();
+            lastX = e.clientX; lastY = e.clientY;
+        } else if (!isScrollDrag) {
+            raycaster.setFromCamera(mouse, camera);
+            const hits = raycaster.intersectObjects(componentMeshes, true);
+            if (hits.length > 0) {
+                let c = hits[0].object;
+                while (c.parent && !componentMeshes.includes(c)) c = c.parent;
+                if (componentMeshes.includes(c) && c.userData.id) {
+                    if (hoveredComp !== c) { hoveredComp = c; showScrollbars(c); }
+                    else updateScrollPos(c);
+                    hoverTip.textContent = c.userData.name || c.userData.id;
+                    hoverTip.style.left = (e.clientX + 12) + 'px';
+                    hoverTip.style.top = (e.clientY - 8) + 'px';
+                    hoverTip.classList.add('visible');
+                } else { hideScrollbars(); hoverTip.classList.remove('visible'); }
+            } else { hideScrollbars(); hoverTip.classList.remove('visible'); }
+        }
+    }
+    
+    function onUp(e) {
+        if (isDragging && draggedComp) {
+            if (currentCompat === 'compatible' && nearestFP) snapToFP(draggedComp, nearestFP);
+            else clearCompatVisuals();
+            isDragging = false; draggedComp = null; currentCompat = null; nearestFP = null;
+            document.body.classList.remove('dragging');
+            updateStats();
+        }
+        isRotating = false;
+        if (isScrollDrag) { isScrollDrag = false; scrollLocked = false; }
+    }
+    
+    function onWheel(e) {
+        e.preventDefault();
+        if (hoveredComp) {
+            const delta = e.deltaY * 0.001;
+            const state = compStates.get(hoveredComp.userData.id);
+            if (state) {
+                state.cScale = Math.max(0.5, Math.min(3, (state.cScale || 1) + delta));
+                hoveredComp.scale.setScalar(state.cScale);
+                updateScrollPos(hoveredComp);
+            }
+        } else {
+            const delta = e.deltaY * 0.001;
+            deployProgress = Math.max(0, Math.min(1, deployProgress - delta));
+            updateExplosion();
+        }
+    }
+    
+    function onScrollDrag(e) {
+        if (!isScrollDrag || !hoveredComp) return;
+        const state = compStates.get(hoveredComp.userData.id);
+        if (!state) return;
+        if (activeScroll === 'v') {
+            const dy = e.clientY - scrollStartY;
+            state.rotY = (state.rotY || 0) - dy * 0.02;
+            hoveredComp.rotation.y = state.rotY;
+            scrollStartY = e.clientY;
+            thumbV.style.top = (28 + Math.sin(state.rotY) * 20) + 'px';
+        } else if (activeScroll === 'h') {
+            const dx = e.clientX - scrollStartX;
+            state.rotX = (state.rotX || 0) - dx * 0.02;
+            hoveredComp.rotation.x = state.rotX;
+            scrollStartX = e.clientX;
+            thumbH.style.left = (28 + Math.sin(state.rotX) * 20) + 'px';
+        }
+    }
+    
+    function updateExplosion() {
+        const totalHeight = 20;
+        componentMeshes.forEach((c, i) => {
+            if (c.userData.origPos) {
+                const o = c.userData.origPos;
+                const explosionOffset = (i / componentMeshes.length) * totalHeight * deployProgress;
+                c.position.y = o.y + explosionOffset;
+                c.userData.isConnected = deployProgress < 0.1;
+            }
+        });
+        footprintMeshes.forEach((fp, i) => {
+            const explosionOffset = (i / footprintMeshes.length) * totalHeight * deployProgress;
+            fp.position.y = COMPONENTS[i].y + explosionOffset;
+            fp.visible = deployProgress > 0.3;
+        });
+        document.getElementById('deployPct').textContent = Math.round(deployProgress * 100) + '%';
+        updateStats();
+    }
+    
+    function resetAll() {
+        deployProgress = 0;
+        componentMeshes.forEach((c, i) => {
+            if (c.userData.origPos) {
+                c.position.copy(c.userData.origPos);
+                c.rotation.set(0, 0, 0);
+                c.scale.set(1, 1, 1);
+                c.userData.isConnected = true;
+            }
+            const state = compStates.get(c.userData.id);
+            if (state) { state.rotX = 0; state.rotY = 0; state.cScale = 1; }
+        });
+        footprintMeshes.forEach((fp, i) => {
+            fp.position.y = COMPONENTS[i].y;
+            fp.userData.occupied = true;
+            fp.visible = false;
+        });
+        document.getElementById('deployPct').textContent = '0%';
+        updateStats();
+    }
+    
+    function showScrollbars(comp) {
+        if (!comp) return;
+        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        const pos = getScreenPos(comp);
+        if (!pos) return;
+        scrollV.style.left = (pos.x + 45) + 'px';
+        scrollV.style.top = (pos.y - 40) + 'px';
+        scrollH.style.left = (pos.x - 40) + 'px';
+        scrollH.style.top = (pos.y + 45) + 'px';
+        floatName.textContent = comp.userData.name || comp.userData.id;
+        floatType.textContent = comp.userData.type || '';
+        floatInfo.style.left = (pos.x - 70) + 'px';
+        floatInfo.style.top = (pos.y - 65) + 'px';
+        floatInfo.classList.add('visible');
+        scrollbars.classList.add('visible');
+    }
+    
+    function updateScrollPos(comp) {
+        if (!comp || !scrollbars.classList.contains('visible')) return;
+        const pos = getScreenPos(comp);
+        if (!pos) return;
+        scrollV.style.left = (pos.x + 45) + 'px';
+        scrollV.style.top = (pos.y - 40) + 'px';
+        scrollH.style.left = (pos.x - 40) + 'px';
+        scrollH.style.top = (pos.y + 45) + 'px';
+        floatInfo.style.left = (pos.x - 70) + 'px';
+        floatInfo.style.top = (pos.y - 65) + 'px';
+    }
+    
+    function hideScrollbars(immediate = false) {
+        if (scrollLocked || isScrollDrag) return;
+        if (immediate) { if (hideTimer) clearTimeout(hideTimer); hoveredComp = null; scrollbars.classList.remove('visible'); floatInfo.classList.remove('visible'); }
+        else { if (hideTimer) clearTimeout(hideTimer); hideTimer = setTimeout(() => { if (!scrollLocked && !isScrollDrag) { hoveredComp = null; scrollbars.classList.remove('visible'); floatInfo.classList.remove('visible'); } }, 150); }
+    }
+    
+    function getScreenPos(obj) {
+        const v = new THREE.Vector3();
+        new THREE.Box3().setFromObject(obj).getCenter(v);
+        v.project(camera);
+        return { x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (-v.y * 0.5 + 0.5) * window.innerHeight };
+    }
+    
+    function updateStats() {
+        let conn = 0;
+        componentMeshes.forEach(c => { if (c.userData.isConnected) conn++; });
+        document.getElementById('compCount').textContent = COMPONENTS.length;
+        document.getElementById('connCount').textContent = conn;
+    }
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+    }
+    
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    
+    init();
+    </script>
+</body>
+</html>
